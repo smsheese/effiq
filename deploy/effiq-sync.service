@@ -1,0 +1,15 @@
+[Unit]
+Description=effiq daily model matrix sync
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/effiq
+Environment=NODE_ENV=production
+EnvironmentFile=-/var/www/effiq/.env
+ExecStart=/usr/bin/npx tsx scripts/sync.ts
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

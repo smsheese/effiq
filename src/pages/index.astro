@@ -1,0 +1,37 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { ModelExplorer } from "@/components/ModelExplorer";
+---
+
+<Layout
+  title="effiq — High-intelligence models per task dollar"
+  description="effiq ranks LLM reasoning variants by capability per measured or estimated task cost. Default Intelligence floor 40, eight usage profiles, and adjustable efficiency weights."
+>
+  <header class="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
+    <div class="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3">
+      <h1 class="text-lg font-bold tracking-tight">
+        <span class="text-emerald-700 dark:text-emerald-400">effiq</span>
+      </h1>
+      <a href="/methodology" class="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
+        Methodology
+      </a>
+      <p class="hidden text-sm text-muted-foreground sm:block">
+        Efficiency × IQ — capability per task dollar across OpenRouter, Cursor, and Artificial Analysis.
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <ModelExplorer client:load />
+  </main>
+
+  <footer class="border-t">
+    <div class="mx-auto max-w-[1500px] px-4 py-6 text-xs text-muted-foreground">
+      <p>
+        <strong class="text-foreground">effiq</strong> matrix built from Artificial Analysis indexes and task costs,
+        OpenRouter provider pricing/throughput, and Cursor variant pricing.
+        Sync daily via <code>npm run sync</code>. Approximations for missing reasoning variants are labeled and confidence-adjusted.
+      </p>
+    </div>
+  </footer>
+</Layout>

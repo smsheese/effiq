@@ -1,0 +1,22 @@
+[Unit]
+Description=effiq (Astro SSR)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/effiq
+Environment=HOST=127.0.0.1
+Environment=PORT=4321
+Environment=SITE_URL=https://effiq.example.com
+EnvironmentFile=-/var/www/effiq/.env
+Environment=MATRIX_FILE=/var/www/effiq/data/models-matrix.json
+Environment=CACHE_FILE=/var/www/effiq/data/models-cache.json
+ExecStart=/usr/bin/node ./dist/server/entry.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

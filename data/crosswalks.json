@@ -1,0 +1,31 @@
+{
+  "aliases": [
+    {
+      "from": { "source": "cursor", "key": "gpt-5.6-luna" },
+      "to": { "source": "artificial_analysis", "key": "gpt-5-6-luna" },
+      "confidence": 0.95,
+      "notes": "Cursor dotted family ↔ AA hyphenated family"
+    },
+    {
+      "from": { "source": "cursor", "key": "gpt-5.6-sol" },
+      "to": { "source": "artificial_analysis", "key": "gpt-5-6-sol" },
+      "confidence": 0.95
+    },
+    {
+      "from": { "source": "cursor", "key": "gpt-5.6-terra" },
+      "to": { "source": "artificial_analysis", "key": "gpt-5-6-terra" },
+      "confidence": 0.95
+    },
+    {
+      "from": { "source": "cursor", "key": "grok-4.6" },
+      "to": { "source": "artificial_analysis", "key": "grok-4-6" },
+      "confidence": 0.95
+    },
+    {
+      "from": { "source": "cursor", "key": "gemini-3.8-flash" },
+      "to": { "source": "artificial_analysis", "key": "gemini-3-8-flash" },
+      "confidence": 0.9
+    }
+  ],
+  "notes": "Manual crosswalk seeds for Cursor ↔ Artificial Analysis family IDs."
+}

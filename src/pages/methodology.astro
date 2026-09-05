@@ -1,0 +1,51 @@
+---
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout
+  title="Methodology — effiq"
+  description="How effiq calculates domain scores, task costs, approximations, and efficiency rankings."
+>
+  <main class="mx-auto max-w-3xl px-4 py-10 prose prose-neutral dark:prose-invert">
+    <p><a href="/" class="text-sm no-underline text-muted-foreground hover:text-foreground">← Back to effiq</a></p>
+    <h1>Methodology</h1>
+    <p>
+      <strong>effiq</strong> ranks model <strong>reasoning variants</strong> for token-efficiency: high capability per real or estimated task dollar.
+      The default gate keeps Artificial Analysis Intelligence Index ≥ 40. Users can move that floor and reweight metrics.
+    </p>
+
+    <h2>Sources</h2>
+    <ul>
+      <li><strong>Artificial Analysis</strong> — intelligence, coding, agentic indexes; measured cost per task; throughput and TTFT.</li>
+      <li><strong>OpenRouter</strong> — live provider prices, context, endpoint latency/throughput percentiles.</li>
+      <li><strong>Cursor</strong> — subscription-pool variants, effort/fast/thinking axes, published token prices.</li>
+    </ul>
+    <p>WhatLLM and LLM Stats scrapers are configured but skipped until robots/terms checks pass. Their derived scores never override AA or official provider prices.</p>
+
+    <h2>Efficiency Score</h2>
+    <p>Among variants that pass the intelligence floor:</p>
+    <ol>
+      <li>Percentile-rank intelligence, coding, agentic, and throughput.</li>
+      <li>Log-normalize and invert task cost and latency.</li>
+      <li>Combine with user weights (default 35/15/10/30/5/5).</li>
+      <li>Apply evidence-coverage and approximation penalties.</li>
+    </ol>
+    <p>Raw <em>capability per dollar</em> (domain score ÷ task cost) is shown separately so near-zero prices cannot silently dominate.</p>
+
+    <h2>Usage profiles</h2>
+    <p>Eight profiles change domain evidence mix, default weights, and workload token assumptions: General, Coding, Agents, Math &amp; Science, Finance, Research, Writing &amp; Literature, Multimodal.</p>
+
+    <h2>Approximations</h2>
+    <ol>
+      <li>Exact measured variant</li>
+      <li>Same-family interpolation between efforts</li>
+      <li>Nearest-effort extrapolation</li>
+      <li>Family aggregate + effort curve</li>
+      <li>Insufficient data (no fabricated value)</li>
+    </ol>
+    <p>Conservative ranking uses the less favorable bound of an estimate (higher cost / lower capability) when confidence is limited.</p>
+
+    <h2>Sync</h2>
+    <p><code>npm run sync</code> refreshes the matrix. Production can use the systemd timer at 04:00 UTC and a Bearer-token <code>POST /api/sync</code> on Node hosts.</p>
+  </main>
+</Layout>

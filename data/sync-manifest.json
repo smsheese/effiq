@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "estimatorVersion": "1.0.0",
+  "generatedAt": "2026-09-05T15:13:36.224Z",
+  "sources": [
+    {
+      "id": "artificial_analysis",
+      "status": "ok",
+      "pulledAt": "2026-09-05T15:13:36.118Z",
+      "rowCount": 634
+    },
+    {
+      "id": "cursor",
+      "status": "ok",
+      "pulledAt": "2026-09-05T15:13:36.131Z",
+      "rowCount": 363
+    },
+    {
+      "id": "openrouter",
+      "status": "ok",
+      "pulledAt": "2026-08-16T13:09:22.099Z",
+      "rowCount": 930
+    },
+    {
+      "id": "opencode",
+      "status": "skipped",
+      "pulledAt": null,
+      "rowCount": 0,
+      "error": "Registry URL not configured"
+    },
+    {
+      "id": "kilocode",
+      "status": "skipped",
+      "pulledAt": null,
+      "rowCount": 0,
+      "error": "Registry URL not configured"
+    },
+    {
+      "id": "whatllm",
+      "status": "skipped",
+      "pulledAt": null,
+      "rowCount": 0,
+      "error": "Guarded scraper disabled until robots/terms check passes"
+    },
+    {
+      "id": "llm_stats",
+      "status": "skipped",
+      "pulledAt": null,
+      "rowCount": 0,
+      "error": "Guarded scraper disabled until robots/terms check passes"
+    }
+  ],
+  "variantCount": 747,
+  "unmatched": 268,
+  "changesFromPrevious": {
+    "added": 0,
+    "removed": 0,
+    "updated": 747
+  }
+}

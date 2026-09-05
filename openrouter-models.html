@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenRouter Model Explorer</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-2: #11161d;
+    --panel: #151b24;
+    --border: #232b36;
+    --text: #dbe2ea;
+    --text-dim: #8b98a8;
+    --accent: #6467f2;
+    --accent-2: #8b5cf6;
+    --green: #3fb950;
+    --amber: #d29922;
+    --red: #f85149;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  header {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    position: sticky; top: 0; z-index: 50;
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header h1 span { color: var(--accent-2); }
+  header .count { color: var(--text-dim); font-size: 13px; }
+  header .spacer { flex: 1; }
+  .btn {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: #1a222d; border-color: #33405a; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #5659e0; }
+
+  .status { padding: 6px 20px; font-size: 13px; color: var(--text-dim); border-bottom: 1px solid var(--border); background: var(--bg-2); }
+  .status.error { color: var(--red); }
+
+  /* Filters */
+  #filters {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+    display: none;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 12px 18px;
+  }
+  #filters.open { display: grid; }
+  .fgroup { display: flex; flex-direction: column; gap: 5px; }
+  .fgroup label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 600; }
+  .fgroup input[type=text] {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 9px; font-size: 13px; width: 100%;
+  }
+  .fgroup input[type=number] {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 8px; font-size: 13px; width: 100%;
+    font-family: var(--mono);
+  }
+  .range-row { display: flex; gap: 6px; align-items: center; }
+  .range-row span { color: var(--text-dim); font-size: 12px; }
+  .check-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+  .check-row label { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+  select {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 8px; font-size: 13px;
+  }
+  .fgroup.wide { grid-column: 1 / -1; }
+  .factions { display: flex; gap: 8px; margin-top: 4px; }
+
+  /* Toolbar */
+  #toolbar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  #toolbar label { font-size: 12px; color: var(--text-dim); }
+  #sortBy { min-width: 200px; }
+  #toolbar .result-count { margin-left: auto; font-size: 13px; color: var(--text-dim); }
+  #toolbar .result-count b { color: var(--text); }
+
+  /* Table */
+  .table-wrap { overflow: auto; max-height: calc(100vh - 250px); }
+  table { border-collapse: collapse; width: 100%; min-width: 1300px; }
+  thead th {
+    position: sticky; top: 0; z-index: 10;
+    background: #0f1520;
+    color: var(--text-dim);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    text-align: left; padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .arrow { font-size: 9px; color: var(--accent); }
+  tbody td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #1a212c;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: #141b26; }
+  .m-name { font-weight: 600; color: var(--text); }
+  .m-author { color: var(--text-dim); font-size: 12px; }
+  .m-slug { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
+  .num { font-family: var(--mono); text-align: right; }
+  .badge {
+    display: inline-block; padding: 1px 7px; border-radius: 20px;
+    font-size: 11px; font-weight: 600; border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .badge.free { color: var(--green); border-color: rgba(63,185,80,.4); background: rgba(63,185,80,.08); }
+  .badge.mod { color: var(--amber); border-color: rgba(210,153,34,.4); background: rgba(210,153,34,.08); }
+  .badge.missing { color: var(--text-dim); border-style: dashed; }
+  .price { color: var(--text); }
+  .dim { color: var(--text-dim); }
+  .green { color: var(--green); }
+  .bar-wrap { display: inline-block; width: 60px; height: 6px; background: #1c2431; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+  .bar { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  .score { display: inline-flex; align-items: center; }
+
+  /* footer */
+  footer { padding: 16px 20px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border); }
+  footer a { color: var(--accent-2); text-decoration: none; }
+
+  .hidden { display: none !important; }
+  @media (max-width: 700px) {
+    #filters { grid-template-columns: 1fr; }
+    header { padding: 10px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OpenRouter <span>Model Explorer</span></h1>
+  <div class="count" id="headerCount">Loading…</div>
+  <div class="spacer"></div>
+  <button class="btn" id="toggleFilters">Filters</button>
+  <button class="btn primary" id="refresh">Refresh</button>
+</header>
+
+<div class="status" id="status">Fetching model catalog from OpenRouter…</div>
+
+<div id="filters">
+  <div class="fgroup wide">
+    <label>Search</label>
+    <input type="text" id="fSearch" placeholder="Model name, author, or slug…  (e.g. claude, gpt-5, qwen)">
+  </div>
+
+  <div class="fgroup wide">
+    <label>Provider mode</label>
+    <select id="fMode">
+      <option value="pricing" selected>Pricing — lowest price provider (default)</option>
+      <option value="latency">Latency — best latency provider</option>
+      <option value="throughput">Throughput — fastest provider</option>
+    </select>
+  </div>
+
+  <div class="fgroup">
+    <label>Input price ($/M tokens) — min</label>
+    <input type="number" id="fInMin" step="any" min="0" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Input price ($/M tokens) — max</label>
+    <input type="number" id="fInMax" step="any" min="0" placeholder="∞">
+  </div>
+  <div class="fgroup">
+    <label>Output price ($/M tokens) — min</label>
+    <input type="number" id="fOutMin" step="any" min="0" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Output price ($/M tokens) — max</label>
+    <input type="number" id="fOutMax" step="any" min="0" placeholder="∞">
+  </div>
+
+  <div class="fgroup">
+    <label>Context window (tokens) — min</label>
+    <input type="number" id="fCtxMin" step="1000" min="0" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Context window (tokens) — max</label>
+    <input type="number" id="fCtxMax" step="1000" min="0" placeholder="∞">
+  </div>
+
+  <div class="fgroup">
+    <label>Throughput — min (tok/s, p95)</label>
+    <input type="number" id="fTPMin" step="any" min="0" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Latency — max (ms, p95)</label>
+    <input type="number" id="fLatMax" step="any" min="0" placeholder="∞">
+  </div>
+
+  <div class="fgroup">
+    <label>Intelligence index — min (0–100)</label>
+    <input type="number" id="fIntMin" step="0.1" min="0" max="100" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Coding index — min (0–100)</label>
+    <input type="number" id="fCodingMin" step="0.1" min="0" max="100" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Agentic index — min (0–100)</label>
+    <input type="number" id="fAgenticMin" step="0.1" min="0" max="100" placeholder="0">
+  </div>
+  <div class="fgroup">
+    <label>Design Arena ELO — min</label>
+    <input type="number" id="fEloMin" step="1" min="0" placeholder="0">
+  </div>
+
+  <div class="fgroup">
+    <label>Modality</label>
+    <div class="check-row" id="modalityChecks"></div>
+  </div>
+
+  <div class="fgroup">
+    <label>Author</label>
+    <select id="fAuthor"><option value="">All authors</option></select>
+  </div>
+
+  <div class="fgroup">
+    <label>Flags</label>
+    <div class="check-row">
+      <label><input type="checkbox" id="fFree"> Free models only</label>
+      <label><input type="checkbox" id="fHasBench"> Has benchmark scores</label>
+      <label><input type="checkbox" id="fHasPerf"> Has throughput/latency</label>
+      <label><input type="checkbox" id="fZdr"> Zero data retention</label>
+    </div>
+  </div>
+
+  <div class="fgroup wide factions">
+    <button class="btn" id="resetFilters">Reset all filters</button>
+  </div>
+</div>
+
+<div id="toolbar">
+  <label for="sortBy">Sort by</label>
+  <select id="sortBy"></select>
+  <label for="sortDir">Direction</label>
+  <select id="sortDir">
+    <option value="desc">High → Low</option>
+    <option value="asc">Low → High</option>
+  </select>
+  <div class="result-count"><b id="resultCount">0</b> / <span id="totalCount">0</span> models</div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th data-key="name">Model</th>
+        <th data-key="context_length" class="num">Context</th>
+        <th data-key="in" class="num">In $/M (rep [range])</th>
+        <th data-key="out" class="num">Out $/M (rep [range])</th>
+        <th data-key="throughput" class="num">Throughput</th>
+        <th data-key="latency" class="num">Latency</th>
+        <th data-key="intelligence" class="num">Intelligence</th>
+        <th data-key="coding" class="num">Coding</th>
+        <th data-key="agentic" class="num">Agentic</th>
+        <th data-key="elo" class="num">DA ELO</th>
+        <th data-key="author">Author</th>
+        <th data-key="modalities">Modality</th>
+        <th data-key="provider">Provider</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<footer>
+  Data from OpenRouter's <code>GET /api/frontend/v1/models/find</code> (same source as openrouter.ai/models).
+  The shown provider, price, throughput, and latency all follow the selected <b>provider mode</b>: pricing (lowest input price, default), latency (best latency), or throughput (fastest).
+  Price main value = that provider's price; bracket = lowest–highest across all providers. ZDR = zero data retention (provider does not retain prompts).
+  Throughput/latency are the p95 values (interpolated from p90/p99) over the last 30 min.
+  Benchmarks: Artificial Analysis intelligence/coding/agentic indices + Design Arena ELO.
+  Open the page (double-click this file) — no API key needed. Click a row to open the model on openrouter.ai.
+</footer>
+
+<script>
+"use strict";
+
+const API_URL = "https://openrouter.ai/api/frontend/v1/models/find?order=most-popular";
+
+let state = {
+  raw: null,          // raw response
+  models: [],         // deduped, enriched rows
+  authors: [],
+  modalities: [],
+};
+
+const $ = (id) => document.getElementById(id);
+
+const fmtK = (n) => {
+  if (n == null || !isFinite(n)) return null;
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1) + "k";
+  return String(Math.round(n));
+};
+const fmtPrice = (perTokenUsd) => {
+  if (perTokenUsd == null || !isFinite(perTokenUsd)) return null;
+  const perM = perTokenUsd * 1e6;
+  if (perM === 0) return "0";
+  if (perM < 0.001) return "$" + perM.toExponential(1);
+  return "$" + (perM >= 100 ? Math.round(perM).toLocaleString() : perM.toFixed(perM < 1 ? 4 : 2));
+};
+const fmtPriceRange = (minUsd, maxUsd) => {
+  if (minUsd == null) return null;
+  const low = fmtPrice(minUsd);
+  if (low == null) return null;
+  if (maxUsd == null || maxUsd <= minUsd) return low;
+  const high = fmtPrice(maxUsd);
+  return high == null ? low : `${low} [${high}]`;
+};
+const fmtPriceMode = (repUsd, minUsd, maxUsd) => {
+  if (repUsd == null) return fmtPriceRange(minUsd, maxUsd);
+  const main = fmtPrice(repUsd);
+  const low = fmtPrice(minUsd), high = fmtPrice(maxUsd);
+  if (high == null || high === low || minUsd == null || maxUsd == null) return main;
+  return `${main} [${low}–${high}]`;
+};
+const fmtLat = (ms) => (ms == null || !isFinite(ms)) ? null : (ms >= 1000 ? (ms / 1000).toFixed(1) + "s" : Math.round(ms) + "ms");
+
+/*
+ * OpenRouter reports p50/p75/p90/p99 percentiles only.
+ * Estimate p95 via log-space interpolation between p90 and p99:
+ *   p95 = p90 * (p99/p90)^( (0.95-0.90)/(0.99-0.90) ) = p90 * (p99/p90)^(5/9)
+ * Falls back to p99 (then p90, then p50) if inputs are missing/invalid.
+ */
+const p95 = (p90, p99) => {
+  if (p90 == null || p99 == null) return null;
+  if (!isFinite(p90) || !isFinite(p99) || p90 <= 0 || p99 <= 0) return null;
+  if (p99 <= p90) return p99;
+  return p90 * Math.pow(p99 / p90, 5 / 9);
+};
+const perfVal = (perf, kind) => {
+  const get = (p) => (perf ? perf[p + "_" + kind] : null);
+  const p90 = get("p90"), p99 = get("p99");
+  const v = p95(p90, p99);
+  if (v != null) return v;
+  return p99 ?? p90 ?? get("p50");
+};
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ---------- data loading ---------- */
+
+async function load() {
+  setStatus("Fetching model catalog from OpenRouter…");
+  try {
+    const res = await fetch(API_URL, { headers: { "Accept": "application/json" } });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    const data = json.data;
+    if (!data || !Array.isArray(data.models)) throw new Error("Unexpected response shape");
+    state.raw = data;
+    state.models = buildRows(data);
+    populateStaticControls();
+    render();
+    setStatus("Loaded " + data.models.length + " model/provider entries → " + state.models.length + " unique models. Updated live from OpenRouter.");
+  } catch (err) {
+    setStatus("Failed to load: " + err.message + " — check your network connection or try again.", true);
+  }
+}
+
+/*
+ * Each raw entry = one (model × provider endpoint) pairing.
+ * Group by model slug, keeping ALL provider endpoints so the user can switch
+ * the "provider mode" (pricing / latency / throughput) at runtime.
+ */
+function buildRows(data) {
+  const { models, endpoint_perf = {}, benchmarks = {} } = data;
+  const bySlug = new Map();
+
+  for (const m of models) {
+    const e = m.endpoint || {};
+    const slug = m.slug;
+    if (!slug) continue;
+
+    const perf = endpoint_perf[e.id] || {};
+    const bm = benchmarks[m.permaslug] || {};
+    const aa = bm.aa || {};
+    const da = bm.da || {};
+
+    const inP = e.pricing ? parseFloat(e.pricing.prompt) : null;
+    const outP = e.pricing ? parseFloat(e.pricing.completion) : null;
+    const dp = e.data_policy || {};
+
+    const endpoint = {
+      in: inP,
+      out: outP,
+      context_length: e.context_length || m.context_length,
+      throughput: perfVal(perf, "throughput"),
+      latency: perfVal(perf, "latency"),
+      hasPerf: !!(perf && (perf.p90_throughput != null || perf.p99_throughput != null || perf.p50_throughput != null)),
+      provider: e.provider_display_name || e.provider_name,
+      provider_slug: e.provider_slug,
+      variant: e.variant || "standard",
+      quantization: e.quantization,
+      is_free: !!e.is_free,
+      zdr: dp.retainsPrompts === false,
+    };
+
+    let row = bySlug.get(slug);
+    if (!row) {
+      const daElo = da.default_elo ?? null;
+      let eloBest = daElo;
+      if (eloBest == null && da.elo_by_category && typeof da.elo_by_category === "object") {
+        const vals = Object.values(da.elo_by_category).filter((v) => typeof v === "number");
+        if (vals.length) eloBest = Math.max(...vals);
+      }
+      row = {
+        slug,
+        permaslug: m.permaslug || slug,
+        name: m.short_name || m.name,
+        fullName: m.name,
+        author: m.author_display_name || m.author,
+        inMin: inP,
+        inMax: inP,
+        outMin: outP,
+        outMax: outP,
+        intelligence: aa.intelligence_index ?? null,
+        coding: aa.coding_index ?? null,
+        agentic: aa.agentic_index ?? null,
+        elo: daElo,
+        eloBest,
+        hasBench: !!(aa.intelligence_index != null || daElo != null),
+        modalities: m.input_modalities || [],
+        outputs: m.output_modalities || [],
+        supports_reasoning: !!m.supports_reasoning,
+        url: "https://openrouter.ai/" + slug,
+        isFreeVariant: /:free$/.test(slug),
+        isBatchVariant: /:batch$/.test(slug),
+        endpoints: [],
+        providers: 0,
+        hasPerf: false,
+        hasZdr: false,
+      };
+      bySlug.set(slug, row);
+    }
+
+    row.endpoints.push(endpoint);
+    row.providers += 1;
+    if (endpoint.hasPerf) row.hasPerf = true;
+    if (endpoint.zdr) row.hasZdr = true;
+
+    if (inP != null && isFinite(inP)) {
+      if (row.inMin == null || inP < row.inMin) row.inMin = inP;
+      if (row.inMax == null || inP > row.inMax) row.inMax = inP;
+    }
+    if (outP != null && isFinite(outP)) {
+      if (row.outMin == null || outP < row.outMin) row.outMin = outP;
+      if (row.outMax == null || outP > row.outMax) row.outMax = outP;
+    }
+  }
+
+  const rows = [...bySlug.values()];
+  for (const r of rows) {
+    // in/out for sorting = lowest price across providers (used by pricing mode)
+    if (r.inMin != null) r.in = r.inMin;
+    if (r.outMin != null) r.out = r.outMin;
+  }
+  return rows;
+}
+
+/*
+ * Pick the representative endpoint for a model based on the selected mode.
+ *   pricing     → lowest input price (ties: has perf data, then standard variant)
+ *   latency     → lowest latency among endpoints that have it (ties: lower price)
+ *   throughput  → highest throughput among endpoints that have it (ties: lower price)
+ * Falls back to the pricing representative when no endpoint has the needed data.
+ */
+function selectRep(model, mode) {
+  const eps = model.endpoints || [];
+  if (!eps.length) return null;
+
+  if (mode === "latency") {
+    const withLat = eps.filter((e) => e.latency != null);
+    if (withLat.length) {
+      withLat.sort((a, b) => (a.latency - b.latency) || (a.in ?? Infinity) - (b.in ?? Infinity));
+      return withLat[0];
+    }
+  }
+  if (mode === "throughput") {
+    const withTp = eps.filter((e) => e.throughput != null);
+    if (withTp.length) {
+      withTp.sort((a, b) => (b.throughput - a.throughput) || (a.in ?? Infinity) - (b.in ?? Infinity));
+      return withTp[0];
+    }
+  }
+  // pricing (default) / fallback
+  const priced = eps.filter((e) => e.in != null);
+  const pool = priced.length ? priced : eps;
+  pool.sort((a, b) => {
+    if ((a.in ?? Infinity) !== (b.in ?? Infinity)) return (a.in ?? Infinity) - (b.in ?? Infinity);
+    if (a.hasPerf !== b.hasPerf) return a.hasPerf ? -1 : 1;
+    if (a.variant !== b.variant) return a.variant === "standard" ? -1 : 1;
+    return 0;
+  });
+  return pool[0];
+}
+
+function populateStaticControls() {
+  const rows = state.models;
+
+  // authors
+  const authors = [...new Set(rows.map((r) => r.author).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  state.authors = authors;
+  const sel = $("fAuthor");
+  sel.innerHTML = '<option value="">All authors</option>' + authors.map((a) => `<option>${esc(a)}</option>`).join("");
+
+  // modalities
+  const mods = [...new Set(rows.flatMap((r) => r.modalities))].sort();
+  state.modalities = mods;
+  $("modalityChecks").innerHTML = mods.map((mo) =>
+    `<label><input type="checkbox" class="mod-check" value="${esc(mo)}"> ${esc(mo)}</label>`
+  ).join("");
+
+  // sort options
+  const sortOptions = [
+    ["name", "Model name"],
+    ["intelligence", "Intelligence index"],
+    ["coding", "Coding index"],
+    ["agentic", "Agentic index"],
+    ["elo", "Design Arena ELO"],
+    ["throughput", "Throughput (tok/s)"],
+    ["latency", "Latency (ms)"],
+    ["in", "Input price (rep)"],
+    ["out", "Output price (rep)"],
+    ["context_length", "Context window"],
+    ["author", "Author"],
+    ["providers", "Number of providers"],
+  ];
+  $("sortBy").innerHTML = sortOptions.map(([k, l]) => `<option value="${k}">${l}</option>`).join("");
+}
+
+/* ---------- filtering & sorting ---------- */
+
+function getFilters() {
+  const num = (id) => {
+    const v = $(id).value.trim();
+    return v === "" ? null : parseFloat(v);
+  };
+  const mods = [...document.querySelectorAll(".mod-check:checked")].map((c) => c.value);
+  return {
+    q: $("fSearch").value.trim().toLowerCase(),
+    mode: $("fMode").value,
+    inMin: num("fInMin"), inMax: num("fInMax"),
+    outMin: num("fOutMin"), outMax: num("fOutMax"),
+    ctxMin: num("fCtxMin"), ctxMax: num("fCtxMax"),
+    tpMin: num("fTPMin"), latMax: num("fLatMax"),
+    intMin: num("fIntMin"), codingMin: num("fCodingMin"), agenticMin: num("fAgenticMin"), eloMin: num("fEloMin"),
+    mods,
+    author: $("fAuthor").value,
+    free: $("fFree").checked,
+    hasBench: $("fHasBench").checked,
+    hasPerf: $("fHasPerf").checked,
+    zdr: $("fZdr").checked,
+  };
+}
+
+function applyFilters(rows) {
+  const f = getFilters();
+  return rows.filter((r) => {
+    if (f.q) {
+      const hay = (r.name + " " + r.fullName + " " + r.author + " " + r.slug + " " + (r.provider || "")).toLowerCase();
+      if (!hay.includes(f.q)) return false;
+    }
+    if (f.author && r.author !== f.author) return false;
+    if (f.mods.length && !f.mods.some((mo) => r.modalities.includes(mo))) return false;
+    if (f.free && !r.is_free && !r.isFreeVariant) return false;
+    if (f.hasBench && !r.hasBench) return false;
+    if (f.hasPerf && !r.hasPerf) return false;
+    if (f.zdr && !r.hasZdr) return false;
+
+    // Price range filters: match if any provider endpoint falls in range
+    if (f.inMin != null && (r.inMax == null || r.inMax * 1e6 < f.inMin)) return false;
+    if (f.inMax != null && (r.inMin == null || r.inMin * 1e6 > f.inMax)) return false;
+    if (f.outMin != null && (r.outMax == null || r.outMax * 1e6 < f.outMin)) return false;
+    if (f.outMax != null && (r.outMin == null || r.outMin * 1e6 > f.outMax)) return false;
+
+    if (f.ctxMin != null && (r.context_length == null || r.context_length < f.ctxMin)) return false;
+    if (f.ctxMax != null && (r.context_length == null || r.context_length > f.ctxMax)) return false;
+
+    if (f.tpMin != null && (r.throughput == null || r.throughput < f.tpMin)) return false;
+    if (f.latMax != null && (r.latency == null || r.latency > f.latMax)) return false;
+
+    if (f.intMin != null && (r.intelligence == null || r.intelligence < f.intMin)) return false;
+    if (f.codingMin != null && (r.coding == null || r.coding < f.codingMin)) return false;
+    if (f.agenticMin != null && (r.agentic == null || r.agentic < f.agenticMin)) return false;
+    if (f.eloMin != null && (r.eloBest == null || r.eloBest < f.eloMin)) return false;
+
+    return true;
+  });
+}
+
+function getSort() {
+  return { key: $("sortBy").value, dir: $("sortDir").value === "asc" ? 1 : -1 };
+}
+
+function sortRows(rows) {
+  const { key, dir } = getSort();
+  const get = (r) => r[key];
+  const isNum = (v) => typeof v === "number";
+  return [...rows].sort((a, b) => {
+    let av = get(a), bv = get(b);
+    const aNum = isNum(av), bNum = isNum(bv);
+    if (aNum && !bNum) return -1;   // numbers first
+    if (!aNum && bNum) return 1;
+    if (aNum && bNum) return (av - bv) * dir;
+    const as = String(av ?? "").toLowerCase(), bs = String(bv ?? "").toLowerCase();
+    return as.localeCompare(bs) * dir;
+  });
+}
+
+/* ---------- rendering ---------- */
+
+function scoreBar(val, max, scale) {
+  if (val == null) return `<span class="badge missing">—</span>`;
+  const pct = Math.max(0, Math.min(100, (val / max) * 100));
+  return `<span class="score"><span class="bar-wrap"><span class="bar" style="width:${pct}%"></span></span>${val.toFixed(1)}</span>`;
+}
+
+function eloCell(val) {
+  if (val == null) return `<span class="badge missing">—</span>`;
+  return `<span class="score"><span class="bar-wrap"><span class="bar" style="width:${Math.min(100, (val / 1600) * 100)}%"></span></span>${Math.round(val)}</span>`;
+}
+
+function render() {
+  const f = getFilters();
+  const tbody = $("tbody");
+
+  // Build a view row per model by merging the model-level data with the
+  // mode's representative endpoint (displayed values follow the mode).
+  const view = state.models.map((m) => {
+    const rep = selectRep(m, f.mode) || {};
+    return Object.assign({}, m, {
+      in: rep.in ?? m.in,
+      out: rep.out ?? m.out,
+      context_length: rep.context_length ?? m.context_length,
+      throughput: rep.throughput ?? null,
+      latency: rep.latency ?? null,
+      provider: rep.provider ?? null,
+      provider_slug: rep.provider_slug ?? null,
+      variant: rep.variant ?? "standard",
+      quantization: rep.quantization ?? null,
+      is_free: !!rep.is_free,
+    });
+  });
+
+  const sorted = sortRows(applyFilters(view));
+
+  $("resultCount").textContent = sorted.length;
+  $("totalCount").textContent = state.models.length;
+  $("headerCount").textContent = state.models.length + " models · updated live";
+
+  if (!sorted.length) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text-dim)">No models match the current filters.</td></tr>`;
+    return;
+  }
+
+  let html = "";
+  for (const r of sorted) {
+    const mods = r.modalities.length ? r.modalities.join(", ") : "<span class='dim'>—</span>";
+    const badges = [];
+    if (r.is_free || r.isFreeVariant) badges.push(`<span class="badge free">free</span>`);
+    if (r.isBatchVariant) badges.push(`<span class="badge">batch</span>`);
+    if (r.hasZdr) badges.push(`<span class="badge free">ZDR</span>`);
+    if (r.variant && r.variant !== "standard" && !r.isFreeVariant && !r.isBatchVariant) badges.push(`<span class="badge">${esc(r.variant)}</span>`);
+    if (r.quantization && r.quantization !== "fp16" && r.quantization !== "bf16") badges.push(`<span class="badge mod">${esc(r.quantization)}</span>`);
+    if (r.supports_reasoning) badges.push(`<span class="badge mod">reasoning</span>`);
+    const badgesHtml = badges.length ? " " + badges.join(" ") : "";
+
+    const inP = fmtPriceMode(r.in, r.inMin, r.inMax), outP = fmtPriceMode(r.out, r.outMin, r.outMax);
+    const tp = r.throughput != null ? Math.round(r.throughput).toLocaleString() + " t/s" : null;
+    const lat = fmtLat(r.latency);
+
+    html += `<tr data-url="${esc(r.url)}">
+      <td>
+        <div class="m-name">${esc(r.name)}${badgesHtml}</div>
+        <div class="m-slug">${esc(r.slug)}${r.providers > 1 ? ` · ${r.providers} providers` : ""}</div>
+      </td>
+      <td class="num">${fmtK(r.context_length) ?? '<span class="dim">—</span>'}</td>
+      <td class="num">${inP ? `<span class="price">${inP}</span>` : '<span class="dim">—</span>'}</td>
+      <td class="num">${outP ? `<span class="price">${outP}</span>` : '<span class="dim">—</span>'}</td>
+      <td class="num">${tp ? tp : '<span class="dim">—</span>'}</td>
+      <td class="num">${lat ? lat : '<span class="dim">—</span>'}</td>
+      <td class="num">${scoreBar(r.intelligence, 70)}</td>
+      <td class="num">${scoreBar(r.coding, 80)}</td>
+      <td class="num">${scoreBar(r.agentic, 60)}</td>
+      <td class="num">${eloCell(r.eloBest)}</td>
+      <td>${esc(r.author) || '<span class="dim">—</span>'}</td>
+      <td><span class="dim" style="font-size:12px">${esc(mods)}</span></td>
+      <td><span class="dim" style="font-size:12px">${esc(r.provider) || '<span class="dim">—</span>'}</span></td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+
+  // update column header arrows
+  document.querySelectorAll("thead th").forEach((th) => {
+    th.querySelectorAll(".arrow").forEach((a) => a.remove());
+    if (th.dataset.key === getSort().key) {
+      th.insertAdjacentHTML("beforeend", ` <span class="arrow">${getSort().dir === 1 ? "▲" : "▼"}</span>`);
+    }
+  });
+}
+
+/* ---------- events ---------- */
+
+function setStatus(msg, isErr) {
+  const el = $("status");
+  el.textContent = msg;
+  el.classList.toggle("error", !!isErr);
+}
+
+$("refresh").addEventListener("click", load);
+$("toggleFilters").addEventListener("click", () => $("filters").classList.toggle("open"));
+
+$("resetFilters").addEventListener("click", () => {
+  ["fSearch", "fInMin", "fInMax", "fOutMin", "fOutMax", "fCtxMin", "fCtxMax", "fTPMin", "fLatMax",
+   "fIntMin", "fCodingMin", "fAgenticMin", "fEloMin"].forEach((id) => ($(id).value = ""));
+  $("fAuthor").value = "";
+  $("fMode").value = "pricing";
+  document.querySelectorAll(".mod-check").forEach((c) => (c.checked = false));
+  ["fFree", "fHasBench", "fHasPerf", "fZdr"].forEach((id) => ($(id).checked = false));
+  $("sortBy").value = "intelligence";
+  $("sortDir").value = "desc";
+  render();
+});
+
+document.querySelectorAll("#filters input, #filters select").forEach((el) => {
+  el.addEventListener("input", render);
+  el.addEventListener("change", render);
+});
+$("sortBy").addEventListener("change", render);
+$("sortDir").addEventListener("change", render);
+
+document.querySelectorAll("thead th").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (!key) return;
+    if ($("sortBy").value === key) {
+      $("sortDir").value = $("sortDir").value === "desc" ? "asc" : "desc";
+    } else {
+      $("sortBy").value = key;
+      $("sortDir").value = "desc";
+    }
+    render();
+  });
+});
+
+$("tbody").addEventListener("click", (ev) => {
+  const tr = ev.target.closest("tr[data-url]");
+  if (tr) window.open(tr.dataset.url, "_blank");
+});
+
+// defaults
+$("sortBy").value = "intelligence";
+load();
+</script>
+</body>
+</html>
