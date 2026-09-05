@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { matrixAgeMs, isSyncLocked } from "@/lib/matrix";
 
-export const prerender = false;
+export const prerender = true;
 
 export const GET: APIRoute = async () => {
   try {

@@ -8,8 +8,7 @@ Built for **token-efficiency-maxxing**: not only the smartest model, but the
 smartest *affordable* effort level (`low` / `medium` / `high` / `xhigh` / `max`)
 across OpenRouter, Cursor, and Artificial Analysis.
 
-> Status: **v0.1.0** — Node/Astro SSR works locally and on a VPS. Cloudflare
-> Pages support is on the [roadmap](./ROADMAP.md).
+> Status: **v0.2.0-ready** — Pure static build deployed to **Cloudflare Pages**, with automated daily sync via GitHub Actions.
 
 ## Features
 
@@ -74,21 +73,19 @@ Outputs: `data/models-matrix.json`, `data/models-matrix.csv`,
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /api/models.json` | Canonical matrix |
-| `GET /api/models.csv` | CSV download |
-| `GET /api/health` | Freshness + sync lock + manifest |
-| `POST /api/sync` | Manual sync (`Authorization: Bearer $SYNC_TOKEN`) — Node/VPS only |
+| `GET /api/models.json` | Canonical matrix (static JSON) |
+| `GET /api/models.csv` | CSV download (static CSV) |
+| `GET /api/health` | Freshness + sync manifest |
 
 ## Deploy
 
-- **VPS / Node:** see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) and `deploy/`
-- **Cloudflare Pages:** not production-ready yet; tracked in [ROADMAP.md](./ROADMAP.md)
+- **Cloudflare Pages:** see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for 1-click Git deploy settings and GitHub Actions daily sync workflow.
 
 ## Stack
 
-- Astro 7 (SSR via `@astrojs/node`)
+- Astro 7 (Static build for Cloudflare Pages)
 - React 19 + TypeScript
-- Tailwind CSS v4 + shadcn/ui
+- Tailwind CSS v4 + shadcn/ui ([Woken](https://tweakcn.com/themes/cmt3ah8fc000004id2kh74do2) theme via tweakcn)
 - Vitest for scoring/identity/estimation tests
 
 ## License

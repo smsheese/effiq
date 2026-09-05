@@ -27,8 +27,20 @@ const OUT_DIR = process.env.OUT_DIR ?? path.join(ROOT, "data");
 const SNAPSHOT_DIR = path.join(OUT_DIR, "snapshots");
 const LOCK_FILE = path.join(OUT_DIR, ".sync.lock");
 
-const AA_DEFAULT = "/home/sheese/system/data/artificial-analysis/catalog.json";
-const CURSOR_DEFAULT = "/home/sheese/system/cursor-models.csv";
+const AA_CANDIDATES = [
+  process.env.AA_CATALOG_PATH,
+  path.join(OUT_DIR, "aa-catalog.json"),
+  path.join(OUT_DIR, "sources", "aa-catalog.json"),
+  "/home/sheese/system/data/artificial-analysis/catalog.json",
+];
+
+const CURSOR_CANDIDATES = [
+  process.env.CURSOR_MODELS_CSV,
+  path.join(OUT_DIR, "cursor-models.csv"),
+  path.join(OUT_DIR, "sources", "cursor-models.csv"),
+  "/home/sheese/system/cursor-models.csv",
+];
+
 const OR_CACHE_DEFAULT = path.join(OUT_DIR, "models-cache.json");
 
 async function exists(p: string): Promise<boolean> {
@@ -38,6 +50,13 @@ async function exists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function resolveFirstExisting(candidates: (string | undefined)[]): Promise<string | null> {
+  for (const c of candidates) {
+    if (c && (await exists(c))) return c;
+  }
+  return null;
 }
 
 async function withLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -66,8 +85,8 @@ async function loadAa(): Promise<{
   version?: string | number;
   status: SyncManifest["sources"][0];
 }> {
-  const local = process.env.AA_CATALOG_PATH ?? AA_DEFAULT;
-  if (await exists(local)) {
+  const local = await resolveFirstExisting(AA_CANDIDATES);
+  if (local) {
     const raw = JSON.parse(await readFile(local, "utf8")) as {
       meta?: { intelligence_index_version?: number };
       data: Parameters<typeof adaptArtificialAnalysis>[0];
@@ -93,7 +112,7 @@ async function loadAa(): Promise<{
       status: "error",
       pulledAt: null,
       rowCount: 0,
-      error: `Missing ${local}`,
+      error: `Missing AA catalog (checked: ${AA_CANDIDATES.filter(Boolean).join(", ")})`,
     },
   };
 }
@@ -102,8 +121,8 @@ async function loadCursor(): Promise<{
   rows: ReturnType<typeof parseCsv>;
   status: SyncManifest["sources"][0];
 }> {
-  const local = process.env.CURSOR_MODELS_CSV ?? CURSOR_DEFAULT;
-  if (!(await exists(local))) {
+  const local = await resolveFirstExisting(CURSOR_CANDIDATES);
+  if (!local) {
     return {
       rows: [],
       status: {
@@ -111,7 +130,7 @@ async function loadCursor(): Promise<{
         status: "error",
         pulledAt: null,
         rowCount: 0,
-        error: `Missing ${local}`,
+        error: `Missing Cursor CSV (checked: ${CURSOR_CANDIDATES.filter(Boolean).join(", ")})`,
       },
     };
   }
@@ -280,7 +299,7 @@ async function main() {
       JSON.stringify(
         {
           ok: true,
-          variants: matrix.variantCount ?? matrix.variants.length,
+          variants: matrix.manifest.variantCount ?? matrix.variants.length,
           hash,
           generatedAt: matrix.generatedAt,
           sources: matrix.manifest.sources.map((s) => ({ id: s.id, status: s.status, rows: s.rowCount })),

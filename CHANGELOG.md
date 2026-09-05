@@ -7,9 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- 100% static output build support (`output: 'static'`) for zero-backend Cloudflare Pages hosting.
+- Scheduled GitHub Actions sync workflow (`.github/workflows/sync.yml`) running daily at 04:00 UTC with automatic commit and push to trigger Cloudflare Pages deploys.
+- Repo-relative fallback resolution in `scripts/sync.ts` with bundled `data/aa-catalog.json` and `data/cursor-models.csv`.
+- Static build prerendering for `/api/models.json`, `/api/models.csv`, and `/api/health`.
+
+### Changed
+
+- Removed `@astrojs/node` SSR adapter in favor of pure static pre-rendering and client-side ranking.
+- Updated `README.md`, `ROADMAP.md`, `docs/DEPLOYMENT.md`, and `.env.example` with Cloudflare Pages instructions.
+
+### Removed
+
+- Deleted `src/pages/api/sync.ts` (replaced by CI/cron sync workflow; no server-side child process spawning on Pages).
+
 ### Planned
 
-- Cloudflare Pages adapter + GitHub Actions daily sync (see ROADMAP)
 - Free secondary benchmarks: Arena Elo, OpenEvals/HF leaderboards, BFCL
 - Playwright smoke tests and fuller Vitest coverage
 

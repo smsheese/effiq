@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { readMatrix, matrixAgeMs } from "@/lib/matrix";
 
-export const prerender = false;
+export const prerender = true;
 
 export const GET: APIRoute = async () => {
   try {

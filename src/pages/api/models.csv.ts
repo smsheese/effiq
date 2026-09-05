@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export const prerender = false;
+export const prerender = true;
 
 export const GET: APIRoute = async () => {
   try {

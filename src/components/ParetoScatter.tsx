@@ -68,7 +68,7 @@ export function ParetoScatter({ rows, xKey, yKey, title }: Props) {
             cx={sx(p.x)}
             cy={sy(p.y)}
             r={3.5}
-            className="fill-emerald-600 dark:fill-emerald-400"
+            className="fill-primary"
             opacity={0.75}
           >
             <title>

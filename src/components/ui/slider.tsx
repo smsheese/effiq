@@ -24,12 +24,12 @@ export function Slider({
       {...props}
     >
       <SliderPrimitive.Track className="relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted">
-        <SliderPrimitive.Range className="absolute h-full bg-emerald-600 dark:bg-emerald-500" />
+        <SliderPrimitive.Range className="absolute h-full bg-primary" />
       </SliderPrimitive.Track>
       {vals.map((_, i) => (
         <SliderPrimitive.Thumb
           key={i}
-          className="block size-4 rounded-full border border-emerald-700 bg-background shadow-sm ring-ring/40 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
+          className="block size-4 rounded-full border border-primary bg-background shadow-sm ring-ring/40 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

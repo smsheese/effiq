@@ -16,17 +16,12 @@ Living plan for **effiq**. Dates are targets, not promises.
 
 Goal: secret-free runtime on Pages; sync in CI.
 
-- [ ] Switch Astro adapter from `@astrojs/node` to `@astrojs/cloudflare`
-      (or static UI + JSON in `public/` / R2)
-- [ ] Bundle or fetch committed `data/models-matrix.json` without Node `fs`
-- [ ] GitHub Actions workflow: daily `npm run sync` → commit matrix or upload
-      artifact → trigger Pages deploy
-- [ ] Document Pages env (`SITE_URL` only at runtime) vs Actions secrets
-      (`ARTIFICIAL_ANALYSIS_API_KEY`, optional `CURSOR_API_KEY`)
-- [ ] Disable or gate `POST /api/sync` on Pages (no process spawn)
-- [ ] Add `LICENSE` if missing (MIT shipped in v0.1.0)
-- [ ] Sanitize repo: no absolute machine paths as required defaults; use
-      relative `data/` inputs in CI
+- [x] Switch Astro to static output for Cloudflare Pages (removed `@astrojs/node`)
+- [x] Prerender and bundle `data/models-matrix.json` and `.csv` into static endpoints
+- [x] GitHub Actions workflow: daily `npm run sync` → commit matrix → trigger Pages deploy
+- [x] Document Pages env (zero secrets required) vs Actions secrets (`ARTIFICIAL_ANALYSIS_API_KEY`, `CURSOR_API_KEY`, etc.)
+- [x] Disable/remove `POST /api/sync` on Pages (no process spawn needed)
+- [x] Sanitize repo: use relative `data/` inputs in CI and sync script with local fallbacks
 
 ## Soon (v0.3.0) — more free evidence sources
 

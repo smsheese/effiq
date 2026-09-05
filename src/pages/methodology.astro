@@ -6,8 +6,28 @@ import Layout from "@/layouts/Layout.astro";
   title="Methodology — effiq"
   description="How effiq calculates domain scores, task costs, approximations, and efficiency rankings."
 >
+  <header class="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
+    <div class="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+      <a href="/" class="flex items-center gap-2.5 no-underline">
+        <span
+          class="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold tracking-tight text-primary-foreground shadow-sm"
+          aria-hidden="true"
+        >
+          eq
+        </span>
+        <span class="flex flex-col leading-none">
+          <span class="text-lg font-bold tracking-tight text-foreground">effiq</span>
+          <span class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            efficiency × iq
+          </span>
+        </span>
+      </a>
+      <span class="ml-auto text-xs font-medium text-muted-foreground">Methodology</span>
+    </div>
+  </header>
+
   <main class="mx-auto max-w-3xl px-4 py-10 prose prose-neutral dark:prose-invert">
-    <p><a href="/" class="text-sm no-underline text-muted-foreground hover:text-foreground">← Back to effiq</a></p>
+    <p><a href="/" class="text-sm no-underline text-primary hover:underline">← Back to explorer</a></p>
     <h1>Methodology</h1>
     <p>
       <strong>effiq</strong> ranks model <strong>reasoning variants</strong> for token-efficiency: high capability per real or estimated task dollar.
@@ -46,6 +66,6 @@ import Layout from "@/layouts/Layout.astro";
     <p>Conservative ranking uses the less favorable bound of an estimate (higher cost / lower capability) when confidence is limited.</p>
 
     <h2>Sync</h2>
-    <p><code>npm run sync</code> refreshes the matrix. Production can use the systemd timer at 04:00 UTC and a Bearer-token <code>POST /api/sync</code> on Node hosts.</p>
+    <p><code>npm run sync</code> refreshes the matrix. On deployment, a GitHub Actions scheduled workflow runs daily at 04:00 UTC and refreshes the matrix automatically.</p>
   </main>
 </Layout>

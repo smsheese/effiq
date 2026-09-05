@@ -79,7 +79,11 @@ function fmtNum(n: number | null | undefined, d = 1): string {
 
 function statusBadge(status: string | undefined) {
   if (!status || status === "measured") {
-    return <Badge variant="outline" className="border-emerald-600/40 text-emerald-700 text-[10px]">Measured</Badge>;
+    return (
+      <Badge variant="outline" className="border-primary/40 text-primary text-[10px]">
+        Measured
+      </Badge>
+    );
   }
   if (status === "interpolated") {
     return <Badge variant="secondary" className="text-[10px]">Interpolated</Badge>;
@@ -98,8 +102,8 @@ function ScoreBar({ value, max = 100 }: { value: number | null; max?: number }) 
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className="h-1.5 w-12 overflow-hidden rounded-full bg-border">
-        <span className="block h-full rounded-full bg-emerald-600" style={{ width: `${pct}%` }} />
+      <span className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
       </span>
       <span className="tabular-nums text-sm">{value.toFixed(1)}</span>
     </span>
@@ -338,17 +342,18 @@ export function ModelExplorer() {
           { label: "Highest intelligence", row: leaders.smartest, fmt: (s: ScoredVariant) => fmtNum(s.intelligenceForGate) },
           { label: "Fastest output", row: leaders.fastest, fmt: (s: ScoredVariant) => s.variant.metrics.throughputTps?.value != null ? `${Math.round(s.variant.metrics.throughputTps.value)} t/s` : "—" },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl border bg-card p-4">
+          <div key={card.label} className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{card.label}</div>
             <div className="mt-1 truncate font-semibold">{card.row?.variant.displayName ?? "—"}</div>
-            <div className="mt-1 font-mono text-sm tabular-nums text-emerald-700 dark:text-emerald-400">
+            <div className="mt-1 font-mono text-sm tabular-nums text-primary">
               {card.row ? card.fmt(card.row) : "—"}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profile</span>
         {USAGE_PROFILES.map((p) => (
           <Button
             key={p.id}
@@ -360,7 +365,9 @@ export function ModelExplorer() {
           </Button>
         ))}
       </div>
-      <p className="mb-4 max-w-3xl text-sm text-muted-foreground">{profile.description} Workload: {profile.workload.label}.</p>
+      <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
+        {profile.description} Workload: <span className="text-foreground">{profile.workload.label}</span>.
+      </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Button variant={showControls ? "secondary" : "outline"} size="sm" onClick={() => setShowControls(!showControls)}>
@@ -633,7 +640,7 @@ export function ModelExplorer() {
                               )}
                               {v.ids.openrouterSlug && (
                                 <a
-                                  className="mt-2 inline-block text-xs text-emerald-700 underline dark:text-emerald-400"
+                                  className="mt-2 inline-block text-xs text-primary underline underline-offset-2"
                                   href={`https://openrouter.ai/${v.ids.openrouterSlug}`}
                                   target="_blank"
                                   rel="noopener"

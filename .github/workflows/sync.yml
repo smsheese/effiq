@@ -1,0 +1,63 @@
+name: Sync Model Matrix
+
+on:
+  schedule:
+    # Run every day at 04:00 UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions UI
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync Matrix & Deploy Trigger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run matrix sync
+        env:
+          OPENROUTER_REFRESH: "1"
+          ARTIFICIAL_ANALYSIS_API_KEY: ${{ secrets.ARTIFICIAL_ANALYSIS_API_KEY }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          AA_CATALOG_PATH: ${{ vars.AA_CATALOG_PATH }}
+          CURSOR_MODELS_CSV: ${{ vars.CURSOR_MODELS_CSV }}
+        run: npm run sync
+
+      - name: Verify test suite against new matrix
+        run: npm test
+
+      - name: Commit and push changes if updated
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Stage updated matrix and manifest files
+          git add data/models-matrix.json data/models-matrix.csv data/sync-manifest.json
+          
+          # If aa-catalog or cursor-models were updated, stage those too
+          if [ -f data/aa-catalog.json ]; then git add data/aa-catalog.json; fi
+          if [ -f data/cursor-models.csv ]; then git add data/cursor-models.csv; fi
+
+          if git diff --staged --quiet; then
+            echo "No changes in model matrix. Nothing to commit."
+          else
+            git commit -m "chore(data): automated models matrix sync [skip ci]"
+            git push origin main
+            echo "Changes pushed to main. Cloudflare Pages build triggered."
+          fi

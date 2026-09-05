@@ -6,9 +6,9 @@ How **effiq** ingests model evidence, what auth each source needs, and how to en
 
 | Source | Adapter | Auth | Enable |
 |--------|---------|------|--------|
-| **Artificial Analysis** | `src/lib/sources/artificial-analysis.ts` | Local `catalog.json`, or `ARTIFICIAL_ANALYSIS_API_KEY` for live refresh (when wired) | `AA_CATALOG_PATH` or default path; run `npm run sync` |
+| **Artificial Analysis** | `src/lib/sources/artificial-analysis.ts` | Bundled `data/aa-catalog.json`, or local `AA_CATALOG_PATH`, or `ARTIFICIAL_ANALYSIS_API_KEY` for live refresh (when wired) | `data/aa-catalog.json` (bundled) or `AA_CATALOG_PATH`; run `npm run sync` |
 | **OpenRouter** | `src/lib/sources/openrouter.ts` | None for public `models/find` | Cache via `OPENROUTER_CACHE`; set `OPENROUTER_REFRESH=1` to refetch |
-| **Cursor** | `src/lib/sources/cursor.ts` | CSV export; `CURSOR_API_KEY` only to regenerate CSV offline | `CURSOR_MODELS_CSV` |
+| **Cursor** | `src/lib/sources/cursor.ts` | Bundled `data/cursor-models.csv`, or `CURSOR_MODELS_CSV` export; `CURSOR_API_KEY` only to regenerate CSV offline | `data/cursor-models.csv` (bundled) or `CURSOR_MODELS_CSV` |
 
 Outputs of sync:
 
@@ -17,6 +17,8 @@ Outputs of sync:
 - `data/snapshots/` (gitignored)
 
 Manual crosswalk seeds: `data/crosswalks.json`.
+
+Bundled input seeds: `data/aa-catalog.json`, `data/cursor-models.csv`.
 
 ## Stubbed / not enabled
 

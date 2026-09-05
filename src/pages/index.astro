@@ -7,16 +7,32 @@ import { ModelExplorer } from "@/components/ModelExplorer";
   title="effiq — High-intelligence models per task dollar"
   description="effiq ranks LLM reasoning variants by capability per measured or estimated task cost. Default Intelligence floor 40, eight usage profiles, and adjustable efficiency weights."
 >
-  <header class="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
+  <header class="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
     <div class="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3">
-      <h1 class="text-lg font-bold tracking-tight">
-        <span class="text-emerald-700 dark:text-emerald-400">effiq</span>
-      </h1>
-      <a href="/methodology" class="rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
-        Methodology
+      <a href="/" class="group flex items-center gap-2.5 no-underline">
+        <span
+          class="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold tracking-tight text-primary-foreground shadow-sm"
+          aria-hidden="true"
+        >
+          eq
+        </span>
+        <span class="flex flex-col leading-none">
+          <span class="text-lg font-bold tracking-tight text-foreground">effiq</span>
+          <span class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+            efficiency × iq
+          </span>
+        </span>
       </a>
-      <p class="hidden text-sm text-muted-foreground sm:block">
-        Efficiency × IQ — capability per task dollar across OpenRouter, Cursor, and Artificial Analysis.
+      <nav class="ml-2 flex items-center gap-1.5">
+        <a
+          href="/methodology"
+          class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
+        >
+          Methodology
+        </a>
+      </nav>
+      <p class="ml-auto hidden max-w-md truncate text-sm text-muted-foreground lg:block">
+        Capability per task dollar — OpenRouter, Cursor, Artificial Analysis
       </p>
     </div>
   </header>
@@ -25,13 +41,14 @@ import { ModelExplorer } from "@/components/ModelExplorer";
     <ModelExplorer client:load />
   </main>
 
-  <footer class="border-t">
-    <div class="mx-auto max-w-[1500px] px-4 py-6 text-xs text-muted-foreground">
+  <footer class="border-t border-border/80">
+    <div class="mx-auto flex max-w-[1500px] flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <p>
-        <strong class="text-foreground">effiq</strong> matrix built from Artificial Analysis indexes and task costs,
-        OpenRouter provider pricing/throughput, and Cursor variant pricing.
-        Sync daily via <code>npm run sync</code>. Approximations for missing reasoning variants are labeled and confidence-adjusted.
+        <span class="font-semibold text-foreground">effiq</span>
+        · matrix from Artificial Analysis, OpenRouter, and Cursor.
+        Approximations are labeled. Sync with <code class="rounded bg-muted px-1 py-0.5">npm run sync</code>.
       </p>
+      <a href="/methodology" class="text-primary underline-offset-2 hover:underline">Scoring methodology</a>
     </div>
   </footer>
 </Layout>

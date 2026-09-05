@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
   "estimatorVersion": "1.0.0",
-  "generatedAt": "2026-09-05T15:13:36.224Z",
+  "generatedAt": "2026-09-05T15:44:05.399Z",
   "sources": [
     {
       "id": "artificial_analysis",
       "status": "ok",
-      "pulledAt": "2026-09-05T15:13:36.118Z",
+      "pulledAt": "2026-09-05T15:44:05.291Z",
       "rowCount": 634
     },
     {
       "id": "cursor",
       "status": "ok",
-      "pulledAt": "2026-09-05T15:13:36.131Z",
+      "pulledAt": "2026-09-05T15:44:05.304Z",
       "rowCount": 363
     },
     {
