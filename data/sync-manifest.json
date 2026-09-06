@@ -1,24 +1,24 @@
 {
   "schemaVersion": 1,
   "estimatorVersion": "1.0.0",
-  "generatedAt": "2026-09-05T16:15:11.286Z",
+  "generatedAt": "2026-09-06T08:21:30.403Z",
   "sources": [
     {
       "id": "artificial_analysis",
       "status": "ok",
-      "pulledAt": "2026-09-05T16:15:10.273Z",
+      "pulledAt": "2026-09-06T08:21:29.579Z",
       "rowCount": 634
     },
     {
       "id": "cursor",
       "status": "ok",
-      "pulledAt": "2026-09-05T16:15:10.286Z",
+      "pulledAt": "2026-09-06T08:21:29.591Z",
       "rowCount": 363
     },
     {
       "id": "openrouter",
       "status": "ok",
-      "pulledAt": "2026-09-05T16:15:11.215Z",
+      "pulledAt": "2026-09-06T08:21:30.332Z",
       "rowCount": 983
     },
     {
@@ -53,8 +53,8 @@
   "variantCount": 770,
   "unmatched": 299,
   "changesFromPrevious": {
-    "added": 31,
-    "removed": 8,
-    "updated": 739
+    "added": 0,
+    "removed": 0,
+    "updated": 770
   }
 }
