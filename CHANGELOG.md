@@ -16,11 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Public site copy (methodology, README overview, footer) rewritten in clearer Simple English.
+- Methodology **Sync** section replaced by **Data freshness**. Visitors read matrix age at `/api/health`.
+- Ranking-control titles show short hover definitions for each term.
 - Removed `@astrojs/node` SSR adapter in favor of pure static pre-rendering and client-side ranking.
 - Updated `README.md`, `ROADMAP.md`, `docs/DEPLOYMENT.md`, and `.env.example` with Cloudflare Pages instructions.
 
 ### Removed
 
+- Developer `npm run sync` instructions from public pages (methodology and explorer footer). README keeps the command for operators.
 - Deleted `src/pages/api/sync.ts` (replaced by CI/cron sync workflow; no server-side child process spawning on Pages).
 
 ### Planned

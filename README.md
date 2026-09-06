@@ -1,25 +1,26 @@
 # effiq
 
-**effiq** ranks LLM **reasoning variants** by capability delivered per real or
-estimated task dollar. Default view keeps Artificial Analysis Intelligence ≥
-**40**, then sorts by a transparent Efficiency Score you can reweight.
+**effiq** ranks LLM **reasoning variants** by capability per real or estimated
+task dollar. The default view keeps Artificial Analysis Intelligence at **40**
+or more. Then it sorts by a public Efficiency Score. You can change the weights.
 
-Built for **token-efficiency-maxxing**: not only the smartest model, but the
-smartest *affordable* effort level (`low` / `medium` / `high` / `xhigh` / `max`)
-across OpenRouter, Cursor, and Artificial Analysis.
+The site compares capability against cost at each effort level
+(`low` / `medium` / `high` / `xhigh` / `max`) across OpenRouter, Cursor, and
+Artificial Analysis.
 
-> Status: **v0.2.0-ready** — Pure static build deployed to **Cloudflare Pages**, with automated daily sync via GitHub Actions.
+> Status: **v0.2.0-ready**. Cloudflare Pages hosts the static build. A GitHub Actions workflow refreshes the matrix each day.
 
 ## Features
 
-- Intelligence floor (default 40), adjustable live
-- Eight usage profiles: General, Coding, Agents, Math & Science, Finance,
-  Research, Writing & Literature, Multimodal
-- Six weight sliders: intelligence, coding, agentic, task cost, latency, throughput
-- Measured AA task cost when available; labeled workload estimates otherwise
+The explorer includes:
+
+- Intelligence floor. The default is 40. You can change it in the live explorer
+- Eight usage profiles. General, Coding, Agents, Math and Science, Finance, Research, Writing and Literature, Multimodal
+- Six weight sliders. Intelligence, coding, agentic, task cost, latency, throughput
+- Measured Artificial Analysis task cost when it exists. Labeled workload estimates otherwise
 - Hierarchical approximations for missing reasoning variants
-- Provider offers, compare (up to 3), Pareto scatters, CSV/JSON export
-- Canonical multi-source matrix via `npm run sync`
+- Provider offers, compare (up to 3), Pareto scatters, CSV and JSON export
+- Canonical multi-source matrix from `npm run sync`
 
 ## Quick start
 
@@ -36,7 +37,7 @@ npm run build
 
 | Doc | Purpose |
 |-----|---------|
-| [README.md](./README.md) | Overview and ops |
+| [README.md](./README.md) | Overview and operations |
 | [ROADMAP.md](./ROADMAP.md) | Near / mid / long-term plans |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | How to contribute |
@@ -50,9 +51,9 @@ npm run build
 |---------|---------|
 | Intelligence floor | 40 (hard gate) |
 | Efficiency weights | 35% intel · 15% coding · 10% agentic · 30% cost · 5% latency · 5% throughput |
-| Task cost | AA measured cost/task, else profile workload × tariffs |
+| Task cost | Artificial Analysis measured cost/task, else profile workload × tariffs |
 | Missing efforts | interpolate → extrapolate → family estimate → insufficient |
-| Approximations | labeled; conservative bounds optional |
+| Approximations | labeled. Conservative bounds are optional |
 
 ## Data pipeline
 
@@ -79,14 +80,14 @@ Outputs: `data/models-matrix.json`, `data/models-matrix.csv`,
 
 ## Deploy
 
-- **Cloudflare Pages:** see [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for 1-click Git deploy settings and GitHub Actions daily sync workflow.
+- **Cloudflare Pages.** See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for Git deploy settings and the GitHub Actions daily refresh workflow.
 
 ## Stack
 
-- Astro 7 (Static build for Cloudflare Pages)
+- Astro 7 (static build for Cloudflare Pages)
 - React 19 + TypeScript
 - Tailwind CSS v4 + shadcn/ui ([Woken](https://tweakcn.com/themes/cmt3ah8fc000004id2kh74do2) theme via tweakcn)
-- Vitest for scoring/identity/estimation tests
+- Vitest for scoring, identity, and estimation tests
 
 ## License
 
@@ -100,8 +101,8 @@ git clone git@ghsmsheese:smsheese/effiq.git
 
 ## Attribution
 
-Benchmark indexes and measured task costs: [Artificial Analysis](https://artificialanalysis.ai).  
-Provider catalog and live routing metrics: [OpenRouter](https://openrouter.ai).  
+Benchmark indexes and measured task costs: [Artificial Analysis](https://artificialanalysis.ai).
+Provider catalog and live routing metrics: [OpenRouter](https://openrouter.ai).
 Cursor variant pricing: Cursor public docs / models API (via local CSV export).
 
 ## Name

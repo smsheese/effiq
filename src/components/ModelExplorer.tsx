@@ -22,6 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DEFAULT_EFFICIENCY_WEIGHTS,
   USAGE_PROFILES,
   WEIGHT_PRESETS,
@@ -42,12 +48,73 @@ import type {
 import {
   ChevronDown,
   ChevronUp,
+  CircleHelp,
   Download,
   RefreshCw,
   Search,
   SlidersHorizontal,
 } from "lucide-react";
 import { ParetoScatter } from "@/components/ParetoScatter";
+
+const METRIC_HELP: Record<keyof MetricWeights, { label: string; help: string }> = {
+  intelligence: {
+    label: "Intelligence",
+    help: "This slider sets how much general reasoning changes rank. The source is the Artificial Analysis Intelligence Index.",
+  },
+  coding: {
+    label: "Coding",
+    help: "This slider sets how much coding skill changes rank.",
+  },
+  agentic: {
+    label: "Agentic",
+    help: "This slider sets how much multi-step tool use and agent benchmarks change rank.",
+  },
+  task_cost: {
+    label: "Task cost",
+    help: "This slider sets how much a lower task dollar cost raises rank.",
+  },
+  latency: {
+    label: "Latency",
+    help: "This slider sets how much faster first-token and round-trip time raises rank.",
+  },
+  throughput: {
+    label: "Throughput",
+    help: "This slider sets how much output tokens per second raises rank.",
+  },
+};
+
+function ControlTitleHelp({
+  title,
+  help,
+  badge,
+  className = "",
+}: {
+  title: React.ReactNode;
+  help: string;
+  badge?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mb-2 flex items-center justify-between ${className}`}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-help items-center gap-1.5 border-b border-dotted border-muted-foreground/50 pb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
+            <span>{title}</span>
+            <CircleHelp className="size-3 text-muted-foreground/70" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+          {help}
+        </TooltipContent>
+      </Tooltip>
+      {badge !== undefined && (
+        <span className="font-mono text-xs font-medium tabular-nums text-foreground">
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
 
 type SortKey =
   | "efficiency"
@@ -334,6 +401,7 @@ export function ModelExplorer() {
   ];
 
   return (
+    <TooltipProvider delayDuration={150}>
     <div className="mx-auto max-w-[1500px] px-4 py-6">
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -353,7 +421,11 @@ export function ModelExplorer() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profile</span>
+        <ControlTitleHelp
+          title="Profile"
+          help="This control selects a usage profile. The profile sets default weights and the token workload for task cost."
+          className="mb-0 mr-1"
+        />
         {USAGE_PROFILES.map((p) => (
           <Button
             key={p.id}
@@ -370,9 +442,16 @@ export function ModelExplorer() {
       </p>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button variant={showControls ? "secondary" : "outline"} size="sm" onClick={() => setShowControls(!showControls)}>
-          <SlidersHorizontal /> Ranking controls
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant={showControls ? "secondary" : "outline"} size="sm" onClick={() => setShowControls(!showControls)}>
+              <SlidersHorizontal /> Ranking controls
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+            This button shows or hides ranking controls. The controls change the floor, weights, and filters.
+          </TooltipContent>
+        </Tooltip>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={loading ? "animate-spin" : ""} /> Refresh
         </Button>
@@ -398,11 +477,23 @@ export function ModelExplorer() {
 
       {showControls && (
         <div className="mb-5 space-y-4 rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <ControlTitleHelp
+              title="Ranking controls"
+              help="These controls change which variants appear and how the Efficiency Score weights them."
+              className="mb-0"
+            />
+            <div className="text-xs text-muted-foreground">
+              Hover a control title to read the term.
+            </div>
+          </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Min intelligence ({intelFloor})
-              </label>
+              <ControlTitleHelp
+                title="Min intelligence"
+                badge={intelFloor}
+                help="This slider hides variants whose Artificial Analysis Intelligence Index is less than the set floor."
+              />
               <Slider
                 min={0}
                 max={70}
@@ -412,9 +503,11 @@ export function ModelExplorer() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Min confidence ({minConfidence.toFixed(2)})
-              </label>
+              <ControlTitleHelp
+                title="Min confidence"
+                badge={minConfidence.toFixed(2)}
+                help="This slider hides variants whose data confidence is less than the set floor. The range is 0.0 to 1.0."
+              />
               <Slider
                 min={0}
                 max={1}
@@ -423,16 +516,41 @@ export function ModelExplorer() {
                 onValueChange={([v]) => setMinConfidence(v)}
               />
             </div>
-            <div className="flex flex-col gap-2 justify-end">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={includeApprox} onCheckedChange={setIncludeApprox} /> Include approximations
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={conservative} onCheckedChange={setConservative} /> Conservative ranking bounds
-              </label>
+            <div className="flex flex-col gap-2.5 justify-end">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex cursor-help items-center gap-2 text-sm">
+                    <Switch checked={includeApprox} onCheckedChange={setIncludeApprox} />
+                    <span className="border-b border-dotted border-muted-foreground/60 text-xs font-medium">
+                      Include approximations
+                    </span>
+                    <CircleHelp className="size-3 text-muted-foreground/70" />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                  When this switch is on, the table includes variants that use interpolated or family estimates.
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex cursor-help items-center gap-2 text-sm">
+                    <Switch checked={conservative} onCheckedChange={setConservative} />
+                    <span className="border-b border-dotted border-muted-foreground/60 text-xs font-medium">
+                      Conservative ranking bounds
+                    </span>
+                    <CircleHelp className="size-3 text-muted-foreground/70" />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                  When this switch is on, estimates use the worse bound. Cost is higher. Capability is lower.
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weight presets</label>
+              <ControlTitleHelp
+                title="Weight presets"
+                help="These buttons apply ready weight mixes for coding, speed, or budget ranking."
+              />
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(WEIGHT_PRESETS).map(([k, p]) => (
                   <Button key={k} size="xs" variant="outline" onClick={() => setWeights(normalizeWeights(p.weights))}>
@@ -444,10 +562,25 @@ export function ModelExplorer() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(Object.keys(weights) as (keyof MetricWeights)[]).map((key) => (
+            {(Object.keys(weights) as (keyof MetricWeights)[]).map((key) => {
+              const meta = METRIC_HELP[key] ?? {
+                label: key.replace("_", " "),
+                help: `This slider sets how much ${key.replace("_", " ")} changes rank.`,
+              };
+              return (
               <div key={key}>
                 <div className="mb-1 flex justify-between text-xs">
-                  <span className="font-medium capitalize">{key.replace("_", " ")}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help items-center gap-1 border-b border-dotted border-muted-foreground/50 pb-0.5 font-medium capitalize text-foreground transition-colors hover:border-foreground">
+                        <span>{meta.label}</span>
+                        <CircleHelp className="size-3 text-muted-foreground/70" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                      {meta.help}
+                    </TooltipContent>
+                  </Tooltip>
                   <span className="tabular-nums text-muted-foreground">{weights[key].toFixed(0)}%</span>
                 </div>
                 <Slider
@@ -458,41 +591,66 @@ export function ModelExplorer() {
                   onValueChange={([v]) => setWeight(key, v)}
                 />
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="relative">
-              <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-8 pl-7" placeholder="Search models…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Search"
+                help="This box filters rows by name, organization, family, or task slug."
+              />
+              <div className="relative">
+                <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input className="h-8 pl-7" placeholder="Search models…" value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
             </div>
-            <Select value={effortFilter} onValueChange={setEffortFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Effort" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All efforts</SelectItem>
-                {["none", "minimal", "low", "medium", "high", "xhigh", "max"].map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={providerFilter} onValueChange={setProviderFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Provider" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All providers</SelectItem>
-                {providers.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {columns.map((c) => (
-                  <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                ))}
-                <SelectItem value="name">Name</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Effort"
+                help="This list filters variants by reasoning effort. Values include none, low, medium, high, xhigh, and max."
+              />
+              <Select value={effortFilter} onValueChange={setEffortFilter}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Effort" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All efforts</SelectItem>
+                  {["none", "minimal", "low", "medium", "high", "xhigh", "max"].map((e) => (
+                    <SelectItem key={e} value={e}>{e}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Provider"
+                help="This list filters variants by inference provider or host."
+              />
+              <Select value={providerFilter} onValueChange={setProviderFilter}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Provider" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All providers</SelectItem>
+                  {providers.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Sort by"
+                help="This list sets the column that sorts the table."
+              />
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {columns.map((c) => (
+                    <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                  ))}
+                  <SelectItem value="name">Name</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       )}
@@ -662,10 +820,13 @@ export function ModelExplorer() {
       </div>
 
       <p className="mt-4 max-w-4xl text-xs leading-relaxed text-muted-foreground">
-        Default view keeps Artificial Analysis Intelligence ≥ {DEFAULT_INTELLIGENCE_FLOOR} and ranks by a transparent Efficiency Score
-        (capability vs measured/estimated task cost, latency, and throughput). Approximated reasoning variants are labeled.
-        Primary sources: Artificial Analysis, OpenRouter, Cursor. Usage profiles change domain evidence, weights, and workload cost assumptions.
+        The default view keeps Artificial Analysis Intelligence at {DEFAULT_INTELLIGENCE_FLOOR} or higher.
+        The table ranks models by the Efficiency Score.
+        The score compares capability against task cost, latency, and throughput.
+        Approximated model variants have clear labels.
+        Primary data sources are Artificial Analysis, OpenRouter, and Cursor.
       </p>
     </div>
+    </TooltipProvider>
   );
 }
