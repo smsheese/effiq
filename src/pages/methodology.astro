@@ -4,7 +4,7 @@ import Layout from "@/layouts/Layout.astro";
 
 <Layout
   title="Methodology — effiq"
-  description="How effiq ranks model variants with domain scores, task costs, approximations, and efficiency rankings."
+  description="How effiq ranks reasoning variants: intelligence floor, Efficiency Score weights, sources, profiles, approximations, and data freshness."
 >
   <header class="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
     <div class="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
@@ -26,74 +26,256 @@ import Layout from "@/layouts/Layout.astro";
     </div>
   </header>
 
-  <main class="mx-auto max-w-3xl px-4 py-10 prose prose-neutral dark:prose-invert">
-    <p><a href="/" class="text-sm no-underline text-primary hover:underline">← Back to explorer</a></p>
+  <main class="mx-auto max-w-3xl px-4 py-10 prose prose-neutral dark:prose-invert prose-headings:scroll-mt-24 prose-table:text-sm">
+    <p><a href="/" class="text-sm no-underline text-primary hover:underline">Back to explorer</a></p>
     <h1>Methodology</h1>
+
     <p>
-      <strong>effiq</strong> ranks model <strong>reasoning variants</strong> by capability per real or estimated task dollar.
-      The default floor keeps the Artificial Analysis Intelligence Index at 40 or more.
-      You can change that floor and the metric weights in the explorer.
+      <strong>effiq</strong> ranks LLM <strong>reasoning variants</strong> by capability per task dollar.
+      A reasoning variant is one model at one effort level, such as <em>medium</em> or <em>high</em>.
     </p>
 
+    <blockquote>
+      <p>
+        The product question is not "which model is smartest."
+        The product question is which variant delivers enough capability for the least real or estimated task dollar.
+      </p>
+    </blockquote>
+
+    <p>
+      The default <strong>intelligence floor</strong> keeps the Artificial Analysis Intelligence Index at
+      <strong>40</strong> or more.
+      You can change that floor and the metric weights in the
+      <a href="/">model explorer</a>.
+    </p>
+
+    <h2>Default ranking settings</h2>
+    <p>These values are the explorer defaults until you change them.</p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Setting</th>
+          <th scope="col">Default</th>
+          <th scope="col">Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Intelligence floor</td>
+          <td><strong>40</strong></td>
+          <td>Variants below this Artificial Analysis Intelligence Index leave the table.</td>
+        </tr>
+        <tr>
+          <td>Efficiency Score weights</td>
+          <td>35 / 15 / 10 / 30 / 5 / 5</td>
+          <td>Intelligence, coding, agentic, task cost, latency, throughput.</td>
+        </tr>
+        <tr>
+          <td>Conservative bounds</td>
+          <td>On</td>
+          <td>Weak estimates use a worse bound: higher cost, lower capability.</td>
+        </tr>
+        <tr>
+          <td>Approximations</td>
+          <td>On</td>
+          <td>If confidence is high enough, rows with interpolated or family estimates stay in the table.</td>
+        </tr>
+      </tbody>
+    </table>
+
     <h2>Sources</h2>
-    <ul>
-      <li>
-        <a href="https://artificialanalysis.ai" rel="noopener noreferrer"><strong>Artificial Analysis</strong></a>.
-        Intelligence, coding, and agentic indexes. Measured cost per task. Throughput and time to first token.
-      </li>
-      <li>
-        <a href="https://openrouter.ai" rel="noopener noreferrer"><strong>OpenRouter</strong></a>.
-        Live provider prices, context length, and endpoint latency and throughput percentiles.
-      </li>
-      <li>
-        <a href="https://cursor.com/docs/models-and-pricing" rel="noopener noreferrer"><strong>Cursor</strong></a>.
-        Subscription-pool variants, effort and thinking axes, and published token prices.
-      </li>
-    </ul>
+    <p>effiq merges public provider and benchmark evidence into one matrix.</p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Source</th>
+          <th scope="col">What it supplies</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <a href="https://artificialanalysis.ai" rel="noopener noreferrer"><strong>Artificial Analysis</strong></a>
+          </td>
+          <td>
+            Intelligence, coding, and agentic indexes. Measured cost per task. Throughput and time to first token.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://openrouter.ai" rel="noopener noreferrer"><strong>OpenRouter</strong></a>
+          </td>
+          <td>Live provider prices, context length, and endpoint latency and throughput percentiles.</td>
+        </tr>
+        <tr>
+          <td>
+            <a href="https://cursor.com/docs/models-and-pricing" rel="noopener noreferrer"><strong>Cursor</strong></a>
+          </td>
+          <td>Subscription-pool variants, effort and thinking axes, and published token prices.</td>
+        </tr>
+      </tbody>
+    </table>
+
     <p>
       We do not run WhatLLM and LLM Stats adapters until robots and terms checks pass.
       Their derived scores never override Artificial Analysis or official provider prices.
     </p>
 
     <h2>Efficiency Score</h2>
-    <p>For variants that pass the intelligence floor, the score follows these steps:</p>
-    <ol>
-      <li>Percentile-rank intelligence, coding, agentic, and throughput.</li>
-      <li>Log-normalize and invert task cost and latency.</li>
-      <li>Combine with user weights. The default mix is 35/15/10/30/5/5.</li>
-      <li>Apply evidence-coverage and approximation penalties.</li>
-    </ol>
     <p>
-      The page also shows raw <em>capability per dollar</em> (domain score divided by task cost).
-      That column stays separate. A near-zero price does not hide other ranking factors.
+      The <strong>Efficiency Score</strong> is the primary ranking number in the explorer.
+      Only variants that pass the intelligence floor enter the score.
+    </p>
+    <p>The score follows these steps:</p>
+    <ol>
+      <li>Percentile-rank intelligence, coding, agentic, and throughput among the gated set.</li>
+      <li>Log-normalize task cost and latency, then invert them so lower cost and lower latency raise the score.</li>
+      <li>Combine the normalized values with the user weights.</li>
+      <li>Apply evidence-coverage and approximation penalties if the evidence is thin.</li>
+    </ol>
+
+    <h3>Default weight mix</h3>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Metric</th>
+          <th scope="col">Default weight</th>
+          <th scope="col">What a higher weight favors</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Intelligence</td>
+          <td><strong>35%</strong></td>
+          <td>General reasoning on the Artificial Analysis Intelligence Index.</td>
+        </tr>
+        <tr>
+          <td>Coding</td>
+          <td><strong>15%</strong></td>
+          <td>Coding benchmarks.</td>
+        </tr>
+        <tr>
+          <td>Agentic</td>
+          <td><strong>10%</strong></td>
+          <td>Tool use and multi-step agent benchmarks.</td>
+        </tr>
+        <tr>
+          <td>Task cost</td>
+          <td><strong>30%</strong></td>
+          <td>Lower dollar cost per task.</td>
+        </tr>
+        <tr>
+          <td>Latency</td>
+          <td><strong>5%</strong></td>
+          <td>Faster first-token and round-trip response.</td>
+        </tr>
+        <tr>
+          <td>Throughput</td>
+          <td><strong>5%</strong></td>
+          <td>More output tokens per second.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Capability per dollar</h3>
+    <p>
+      The explorer also shows raw <em>capability per dollar</em>.
+      That value is the domain score divided by task cost.
+      It is <strong>not</strong> the Efficiency Score.
+      Near-zero prices cannot hide other ranking factors in silence.
     </p>
 
     <h2>Usage profiles</h2>
     <p>
-      Eight profiles change the domain evidence mix, the default weights, and the workload token assumptions.
-      The profiles are General, Coding, Agents, Math and Science, Finance, Research, Writing and Literature, and Multimodal.
+      A <strong>usage profile</strong> changes the domain evidence mix, the default weights, and the token workload for estimated task cost.
+      The explorer includes eight profiles.
     </p>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Profile</th>
+          <th scope="col">Focus</th>
+          <th scope="col">Workload label</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>General</td>
+          <td>Broad capability with balanced cost.</td>
+          <td>Standard mixed task</td>
+        </tr>
+        <tr>
+          <td>Coding</td>
+          <td>Software engineering strength and agent loops.</td>
+          <td>Coding agent loop</td>
+        </tr>
+        <tr>
+          <td>Agents</td>
+          <td>Tool use, multi-step reliability, and cache.</td>
+          <td>Multi-step agent</td>
+        </tr>
+        <tr>
+          <td>Math and Science</td>
+          <td>Hard reasoning and science questions.</td>
+          <td>Hard reasoning</td>
+        </tr>
+        <tr>
+          <td>Finance</td>
+          <td>Numeric reasoning and document extraction.</td>
+          <td>Document analysis</td>
+        </tr>
+        <tr>
+          <td>Research</td>
+          <td>Long context, retrieval, and synthesis.</td>
+          <td>Long-context research</td>
+        </tr>
+        <tr>
+          <td>Writing and Literature</td>
+          <td>Style, instruction following, and long output.</td>
+          <td>Long-form writing</td>
+        </tr>
+        <tr>
+          <td>Multimodal</td>
+          <td>Image, audio, or video plus text.</td>
+          <td>Vision + text</td>
+        </tr>
+      </tbody>
+    </table>
 
     <h2>Approximations</h2>
-    <p>Missing reasoning variants use this ladder:</p>
-    <ol>
-      <li>Exact measured variant.</li>
-      <li>Same-family interpolation between efforts.</li>
-      <li>Nearest-effort extrapolation.</li>
-      <li>Family aggregate plus effort curve.</li>
-      <li>Insufficient data. No fabricated value.</li>
-    </ol>
     <p>
-      Conservative ranking uses the less favorable bound of an estimate when confidence is limited.
-      That bound is a higher cost or a lower capability.
-      The UI keeps measured metrics and estimated metrics labeled.
+      Many providers publish only some effort levels.
+      Missing reasoning variants use this ladder:
     </p>
+    <ol>
+      <li><strong>Exact measured variant.</strong> Direct measured evidence for that effort.</li>
+      <li><strong>Same-family interpolation.</strong> Estimate between two measured efforts in the same family.</li>
+      <li><strong>Nearest-effort extrapolation.</strong> Estimate from the closest measured effort.</li>
+      <li><strong>Family aggregate plus effort curve.</strong> Estimate from the family pattern.</li>
+      <li><strong>Insufficient data.</strong> No fabricated value.</li>
+    </ol>
+
+    <blockquote>
+      <p>
+        <strong>Measured</strong> and <strong>estimated</strong> metrics stay labeled in the UI.
+        If confidence is limited, conservative ranking uses the less favorable bound of an estimate.
+      </p>
+    </blockquote>
 
     <h2>Data freshness</h2>
     <p>
-      A GitHub Actions workflow refreshes the matrix daily at 04:00 UTC.
-      You can read freshness at
-      <a href="/api/health">/api/health</a>.
+      A GitHub Actions workflow refreshes the matrix daily at <strong>04:00 UTC</strong>.
+      The health endpoint reports matrix age and sync status.
+    </p>
+    <ul>
+      <li>Freshness: <a href="/api/health"><code>/api/health</code></a></li>
+      <li>Matrix JSON: <a href="/api/models.json"><code>/api/models.json</code></a></li>
+      <li>Matrix CSV: <a href="/api/models.csv"><code>/api/models.csv</code></a></li>
+    </ul>
+
+    <p>
+      <a href="/">Open the model explorer</a>
+      to change floors, weights, and profiles against the live matrix.
     </p>
   </main>
 </Layout>
