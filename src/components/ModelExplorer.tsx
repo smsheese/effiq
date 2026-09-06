@@ -63,7 +63,7 @@ const METRIC_HELP: Record<keyof MetricWeights, { label: string; help: string }> 
   },
   coding: {
     label: "Coding",
-    help: "This slider sets how much coding skill changes rank.",
+    help: "This slider sets how much coding skill changes rank. Sources include SWE-bench and HumanEval.",
   },
   agentic: {
     label: "Agentic",
@@ -71,7 +71,7 @@ const METRIC_HELP: Record<keyof MetricWeights, { label: string; help: string }> 
   },
   task_cost: {
     label: "Task cost",
-    help: "This slider sets how much a lower task dollar cost raises rank.",
+    help: "This slider sets how much a lower task dollar cost raises rank. A higher weight favors cheaper variants.",
   },
   latency: {
     label: "Latency",
