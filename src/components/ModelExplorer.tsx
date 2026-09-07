@@ -51,6 +51,8 @@ import {
   ChevronUp,
   CircleHelp,
   Download,
+  Lock,
+  LockOpen,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -112,6 +114,23 @@ type SortKey =
   | "name";
 
 const STORAGE_KEY = "effiq-v1";
+
+const WEIGHT_KEYS = [
+  "intelligence",
+  "coding",
+  "agentic",
+  "task_cost",
+  "latency",
+  "throughput",
+] as const;
+
+type WeightKey = (typeof WEIGHT_KEYS)[number];
+
+const MAX_LOCKED = 4;
+
+function weightsMatch(a: MetricWeights, b: MetricWeights, eps = 0.01): boolean {
+  return WEIGHT_KEYS.every((k) => Math.abs(a[k] - b[k]) <= eps);
+}
 
 function fmtTokens(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -246,6 +265,8 @@ export function ModelExplorer() {
   const [q, setQ] = React.useState("");
   const [profileId, setProfileId] = React.useState<UsageProfileId>("general");
   const [weights, setWeights] = React.useState<MetricWeights>(DEFAULT_EFFICIENCY_WEIGHTS);
+  const [lockedKeys, setLockedKeys] = React.useState<WeightKey[]>([]);
+  const [activePreset, setActivePreset] = React.useState<string | null>(null);
   const [intelFloor, setIntelFloor] = React.useState(DEFAULT_INTELLIGENCE_FLOOR);
   const [includeApprox, setIncludeApprox] = React.useState(true);
   const [minConfidence, setMinConfidence] = React.useState(0.3);
@@ -274,10 +295,22 @@ export function ModelExplorer() {
           weights?: MetricWeights;
           profileId?: UsageProfileId;
           intelFloor?: number;
+          lockedKeys?: WeightKey[];
+          activePreset?: string | null;
         };
         if (saved.weights) setWeights(normalizeWeights(saved.weights));
         if (saved.profileId && !params.get("profile")) setProfileId(saved.profileId);
         if (saved.intelFloor != null && !params.get("intel")) setIntelFloor(saved.intelFloor);
+        if (Array.isArray(saved.lockedKeys)) {
+          setLockedKeys(
+            saved.lockedKeys.filter((k): k is WeightKey =>
+              (WEIGHT_KEYS as readonly string[]).includes(k),
+            ).slice(0, MAX_LOCKED),
+          );
+        }
+        if (typeof saved.activePreset === "string" && WEIGHT_PRESETS[saved.activePreset]) {
+          setActivePreset(saved.activePreset);
+        }
       }
     } catch {
       /* ignore */
@@ -287,7 +320,7 @@ export function ModelExplorer() {
   React.useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ weights, profileId, intelFloor }),
+      JSON.stringify({ weights, profileId, intelFloor, lockedKeys, activePreset }),
     );
     const params = new URLSearchParams(window.location.search);
     params.set("profile", profileId);
@@ -295,7 +328,7 @@ export function ModelExplorer() {
     if (channelFilter !== "all") params.set("channel", channelFilter);
     else params.delete("channel");
     window.history.replaceState(null, "", `?${params.toString()}`);
-  }, [weights, profileId, intelFloor, channelFilter]);
+  }, [weights, profileId, intelFloor, channelFilter, lockedKeys, activePreset]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -319,7 +352,40 @@ export function ModelExplorer() {
   const applyProfile = (id: UsageProfileId) => {
     setProfileId(id);
     setWeights(normalizeWeights(getProfile(id).defaultWeights));
+    setLockedKeys([]);
+    setActivePreset(null);
   };
+
+  const applyPreset = (key: string) => {
+    const preset = WEIGHT_PRESETS[key];
+    if (!preset) return;
+    setWeights(normalizeWeights(preset.weights));
+    setLockedKeys([]);
+    setActivePreset(key);
+  };
+
+  const toggleLock = (key: WeightKey) => {
+    setLockedKeys((prev) => {
+      if (prev.includes(key)) return prev.filter((k) => k !== key);
+      if (prev.length >= MAX_LOCKED) return prev;
+      return [...prev, key];
+    });
+  };
+
+  // Exact preset match (full highlight). Falls back to last-clicked preset (lighter when modified).
+  const matchedPresetKey = React.useMemo(() => {
+    for (const [k, p] of Object.entries(WEIGHT_PRESETS)) {
+      if (weightsMatch(weights, normalizeWeights(p.weights))) return k;
+    }
+    return null;
+  }, [weights]);
+
+  // If the user drags sliders onto an exact preset mix, adopt it as the active preset.
+  React.useEffect(() => {
+    if (matchedPresetKey) setActivePreset(matchedPresetKey);
+  }, [matchedPresetKey]);
+
+  const displayPresetKey = matchedPresetKey ?? activePreset;
 
   const options: RankingOptions = React.useMemo(
     () => ({
@@ -495,8 +561,30 @@ export function ModelExplorer() {
     URL.revokeObjectURL(url);
   };
 
-  const setWeight = (key: keyof MetricWeights, value: number) => {
-    setWeights((w) => normalizeWeights({ ...w, [key]: value }));
+  const setWeight = (key: WeightKey, value: number) => {
+    if (lockedKeys.includes(key)) return;
+    setWeights((prev) => {
+      const lockedSum = lockedKeys.reduce((s, k) => (k === key ? s : s + prev[k]), 0);
+      let v = Math.max(0, Math.min(100, value));
+      // Locked sliders keep their share, so clamp the moved slider to the free remainder.
+      v = Math.min(v, Math.max(0, 100 - lockedSum));
+      const others = WEIGHT_KEYS.filter((k) => k !== key && !lockedKeys.includes(k));
+      const next = { ...prev, [key]: v } as MetricWeights;
+      for (const k of lockedKeys) next[k] = prev[k];
+      const remainder = Math.max(0, 100 - lockedSum - v);
+      if (others.length === 0) {
+        next[key] = 100 - lockedSum;
+        return next;
+      }
+      const prevOtherSum = others.reduce((s, k) => s + prev[k], 0);
+      if (prevOtherSum <= 1e-9) {
+        const each = remainder / others.length;
+        for (const k of others) next[k] = each;
+      } else {
+        for (const k of others) next[k] = (prev[k] / prevOtherSum) * remainder;
+      }
+      return next;
+    });
   };
 
   const profile = getProfile(profileId);
@@ -725,15 +813,35 @@ export function ModelExplorer() {
             <div>
               <ControlTitleHelp
                 title="Weight presets"
-                help="These buttons apply ready weight mixes for coding, speed, or budget ranking."
+                help="These buttons apply ready weight mixes for coding, speed, or budget ranking. Applying a preset unlocks all sliders."
               />
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(WEIGHT_PRESETS).map(([k, p]) => (
-                  <Button key={k} size="xs" variant="outline" onClick={() => setWeights(normalizeWeights(p.weights))}>
-                    {p.label}
-                  </Button>
-                ))}
+                {Object.entries(WEIGHT_PRESETS).map(([k, p]) => {
+                  const isActive = displayPresetKey === k;
+                  const isExact = matchedPresetKey === k;
+                  return (
+                    <Button
+                      key={k}
+                      size="xs"
+                      variant={isActive ? "default" : "outline"}
+                      className={isActive && !isExact ? "opacity-60" : undefined}
+                      title={
+                        isActive && !isExact
+                          ? `${p.label} (modified — drag sliders, click again to reset)`
+                          : `${p.label} (click to apply and unlock all sliders)`
+                      }
+                      onClick={() => applyPreset(k)}
+                    >
+                      {p.label}
+                    </Button>
+                  );
+                })}
               </div>
+              {(activePreset || matchedPresetKey) && !matchedPresetKey && activePreset && WEIGHT_PRESETS[activePreset] && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  {WEIGHT_PRESETS[activePreset].label} modified
+                </p>
+              )}
             </div>
           </div>
 
