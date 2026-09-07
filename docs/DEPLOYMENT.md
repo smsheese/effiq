@@ -49,6 +49,7 @@ Go to **Repo Settings** -> **Secrets and variables** -> **Actions**:
 | Secret / Variable | Type | Purpose |
 |-------------------|------|---------|
 | `ARTIFICIAL_ANALYSIS_API_KEY` | Secret | Optional / future live AA sync |
+| `OPENROUTER_API_KEY` | Secret | Optional / authenticated OpenRouter `models/find` fetch with higher rate limits |
 | `CURSOR_API_KEY` | Secret | Optional / regenerate Cursor models |
 | `HF_TOKEN` | Secret | Optional Hugging Face token |
 | `AA_CATALOG_PATH` | Variable | Override path to AA catalog JSON (defaults to `data/aa-catalog.json`) |

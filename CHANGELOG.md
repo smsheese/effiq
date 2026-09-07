@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Header tagline names all three provider channels (OpenRouter, Cursor, and OpenCode Go).
 - Data refresh: matrix re-synced on 2026-09-07 with 1184 variants (0 added, 0 removed). All live sources healthy — Artificial Analysis (643 rows), Cursor (363), OpenRouter (982), OpenCode Go (28).
+- Sync workflow now passes `OPENROUTER_API_KEY` through to `npm run sync` so an optional secret enables authenticated OpenRouter fetches with higher rate limits.
 
 ## [0.2.0] - 2026-09-07
 

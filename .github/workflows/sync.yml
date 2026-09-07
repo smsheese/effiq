@@ -33,6 +33,7 @@ jobs:
         env:
           OPENROUTER_REFRESH: "1"
           ARTIFICIAL_ANALYSIS_API_KEY: ${{ secrets.ARTIFICIAL_ANALYSIS_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           AA_CATALOG_PATH: ${{ vars.AA_CATALOG_PATH }}
