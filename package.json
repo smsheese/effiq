@@ -13,6 +13,7 @@
     "astro": "astro",
     "sync": "tsx scripts/sync.ts",
     "sync:cursor": "python3 scripts/cursor_pricing_pyagent.py",
+    "sync:agent": "python3 scripts/agent_refresh.py",
     "test": "vitest run",
     "check": "astro check"
   },

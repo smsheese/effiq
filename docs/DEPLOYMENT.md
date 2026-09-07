@@ -49,9 +49,10 @@ Go to **Repo Settings** -> **Secrets and variables** -> **Actions**:
 | Secret / Variable | Type | Purpose |
 |-------------------|------|---------|
 | `ARTIFICIAL_ANALYSIS_API_KEY` | Secret | Optional / future live AA sync |
-| `OPENROUTER_API_KEY` | Secret | Optional / authenticated OpenRouter `models/find` fetch with higher rate limits |
+| `OPENROUTER_API_KEY` | Secret | Optional / authenticated OpenRouter `models/find` fetch with higher rate limits; also powers the `sync:agent` docs-page refresh (skipped when unset) |
 | `CURSOR_API_KEY` | Secret | Optional / regenerate Cursor models |
 | `HF_TOKEN` | Secret | Optional Hugging Face token |
+| `REFRESH_MODEL` | Variable | Optional OpenRouter model id for the agent seed refresh (default `openrouter/auto`) |
 | `AA_CATALOG_PATH` | Variable | Override path to AA catalog JSON (defaults to `data/aa-catalog.json`) |
 | `CURSOR_MODELS_CSV` | Variable | Override path to Cursor CSV (defaults to `data/cursor-models.csv`) |
 | `SITE_URL` | Pages env (not Actions secret) | Public origin for Cloudflare Pages builds |

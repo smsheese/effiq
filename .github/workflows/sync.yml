@@ -29,6 +29,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Refresh website-sourced seeds via agent
+        # Best-effort: fetches Cursor/OpenCode/CursorBench docs pages and
+        # extracts pricing/benchmark rows with an OpenRouter model into the
+        # bundled seeds. Skips cleanly without a key; never blocks the sync.
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          REFRESH_MODEL: ${{ vars.REFRESH_MODEL }}
+        run: python3 scripts/agent_refresh.py
+
       - name: Run matrix sync
         env:
           OPENROUTER_REFRESH: "1"
@@ -51,9 +61,11 @@ jobs:
           # Stage updated matrix and manifest files
           git add data/models-matrix.json data/models-matrix.csv data/sync-manifest.json
           
-          # If aa-catalog or cursor-models were updated, stage those too
+          # If seed inputs were refreshed (bundled or agent-updated), stage those too
           if [ -f data/aa-catalog.json ]; then git add data/aa-catalog.json; fi
           if [ -f data/cursor-models.csv ]; then git add data/cursor-models.csv; fi
+          if [ -f data/cursorbench.json ]; then git add data/cursorbench.json; fi
+          if [ -f data/opencode-go.json ]; then git add data/opencode-go.json; fi
 
           if git diff --staged --quiet; then
             echo "No changes in model matrix. Nothing to commit."
