@@ -164,6 +164,25 @@ function fmtNum(n: number | null | undefined, d = 1): string {
   return n.toFixed(d);
 }
 
+function parseBound(s: string): number | null {
+  const t = s.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+function inCostRange(
+  v: number | null | undefined,
+  min: number | null,
+  max: number | null,
+): boolean {
+  if (min == null && max == null) return true;
+  if (v == null || !Number.isFinite(v)) return false;
+  if (min != null && v < min) return false;
+  if (max != null && v > max) return false;
+  return true;
+}
+
 function statusBadge(status: string | undefined) {
   if (!status || status === "measured") {
     return (
@@ -273,6 +292,12 @@ export function ModelExplorer() {
   const [conservative, setConservative] = React.useState(true);
   const [effortFilter, setEffortFilter] = React.useState<string>("all");
   const [providerFilter, setProviderFilter] = React.useState<string>("all");
+  const [inputCostMin, setInputCostMin] = React.useState("");
+  const [inputCostMax, setInputCostMax] = React.useState("");
+  const [outputCostMin, setOutputCostMin] = React.useState("");
+  const [outputCostMax, setOutputCostMax] = React.useState("");
+  const [taskCostMin, setTaskCostMin] = React.useState("");
+  const [taskCostMax, setTaskCostMax] = React.useState("");
   const [channelFilter, setChannelFilter] = React.useState<ProviderChannel>("all");
   const [sortKey, setSortKey] = React.useState<SortKey>("efficiency");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
@@ -428,6 +453,12 @@ export function ModelExplorer() {
 
   const filtered = React.useMemo(() => {
     const qq = q.trim().toLowerCase();
+    const inMin = parseBound(inputCostMin);
+    const inMax = parseBound(inputCostMax);
+    const outMin = parseBound(outputCostMin);
+    const outMax = parseBound(outputCostMax);
+    const taskMin = parseBound(taskCostMin);
+    const taskMax = parseBound(taskCostMax);
     return scored.filter((s) => {
       if (qq) {
         const hay = `${s.variant.displayName} ${s.variant.familySlug} ${s.variant.provider} ${s.variant.ids.openrouterSlug ?? ""} ${s.variant.ids.cursorTaskSlug ?? ""} ${s.variant.ids.cursorModelId ?? ""} ${s.variant.offers.map((o) => o.variant ?? "").join(" ")}`.toLowerCase();
@@ -438,9 +469,25 @@ export function ModelExplorer() {
       if (channelFilter === "opencode" && !isOpencodeVariant(s.variant)) return false;
       if (effortFilter !== "all" && s.variant.effort !== effortFilter) return false;
       if (providerFilter !== "all" && s.variant.provider !== providerFilter) return false;
+      if (!inCostRange(s.variant.metrics.inputUsdPerMillion?.value, inMin, inMax)) return false;
+      if (!inCostRange(s.variant.metrics.outputUsdPerMillion?.value, outMin, outMax)) return false;
+      if (!inCostRange(s.effectiveTaskCostUsd, taskMin, taskMax)) return false;
       return true;
     });
-  }, [scored, q, channelFilter, effortFilter, providerFilter]);
+  }, [scored, q, channelFilter, effortFilter, providerFilter, inputCostMin, inputCostMax, outputCostMin, outputCostMax, taskCostMin, taskCostMax]);
+
+  const hasCostRange = [inputCostMin, inputCostMax, outputCostMin, outputCostMax, taskCostMin, taskCostMax].some(
+    (s) => parseBound(s) != null,
+  );
+
+  const clearCostRanges = () => {
+    setInputCostMin("");
+    setInputCostMax("");
+    setOutputCostMin("");
+    setOutputCostMax("");
+    setTaskCostMin("");
+    setTaskCostMax("");
+  };
 
   const sorted = React.useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -845,12 +892,24 @@ export function ModelExplorer() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 border-t border-border/40 pt-4">
-            {(Object.keys(weights) as (keyof MetricWeights)[]).map((key) => {
+          <div className="border-t border-border/40 pt-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Lock up to {MAX_LOCKED} sliders. Locked sliders stay fixed while the other sliders share the remainder.
+                Click a preset to unlock all.
+              </p>
+              <p className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                {lockedKeys.length}/{MAX_LOCKED} locked
+              </p>
+            </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(WEIGHT_KEYS as readonly WeightKey[]).map((key) => {
               const meta = METRIC_HELP[key] ?? {
                 label: key.replace("_", " "),
                 help: `This slider sets how much ${key.replace("_", " ")} changes rank.`,
               };
+              const isLocked = lockedKeys.includes(key);
+              const lockDisabled = !isLocked && lockedKeys.length >= MAX_LOCKED;
               return (
                 <div key={key} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
@@ -865,8 +924,38 @@ export function ModelExplorer() {
                         {meta.help}
                       </TooltipContent>
                     </Tooltip>
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                      {weights[key].toFixed(0)}%
+                    <span className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {weights[key].toFixed(0)}%
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon-xs"
+                            variant={isLocked ? "default" : "ghost"}
+                            aria-pressed={isLocked}
+                            aria-label={isLocked ? `Unlock ${meta.label}` : `Lock ${meta.label}`}
+                            title={
+                              isLocked
+                                ? `Unlock ${meta.label}`
+                                : lockDisabled
+                                  ? `Lock limit reached (${MAX_LOCKED} max)`
+                                  : `Lock ${meta.label} at ${weights[key].toFixed(0)}%`
+                            }
+                            disabled={lockDisabled}
+                            onClick={() => toggleLock(key)}
+                          >
+                            {isLocked ? <Lock /> : <LockOpen />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                          {isLocked
+                            ? `This slider is locked at ${weights[key].toFixed(0)}%. Click to unlock.`
+                            : lockDisabled
+                              ? `You can lock up to ${MAX_LOCKED} sliders. Unlock one to lock another.`
+                              : `Lock ${meta.label} at ${weights[key].toFixed(0)}%. Moving another slider will then only change the unlocked sliders.`}
+                        </TooltipContent>
+                      </Tooltip>
                     </span>
                   </div>
                   <Slider
@@ -874,11 +963,13 @@ export function ModelExplorer() {
                     max={100}
                     step={1}
                     value={[weights[key]]}
+                    disabled={isLocked}
                     onValueChange={([v]) => setWeight(key, v)}
                   />
                 </div>
               );
             })}
+          </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 border-t border-border/40 pt-4">
@@ -941,6 +1032,112 @@ export function ModelExplorer() {
                   <SelectItem value="name">Name</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 border-t border-border/40 pt-4">
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Input cost range"
+                help="This range keeps only variants whose input price in dollars per 1M tokens falls between min and max. Empty means no bound."
+              />
+              <div className="flex items-center gap-1.5">
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="Min $/1M"
+                  aria-label="Minimum input cost in dollars per 1M tokens"
+                  value={inputCostMin}
+                  onChange={(e) => setInputCostMin(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="Max $/1M"
+                  aria-label="Maximum input cost in dollars per 1M tokens"
+                  value={inputCostMax}
+                  onChange={(e) => setInputCostMax(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Output cost range"
+                help="This range keeps only variants whose output price in dollars per 1M tokens falls between min and max. Empty means no bound."
+              />
+              <div className="flex items-center gap-1.5">
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="Min $/1M"
+                  aria-label="Minimum output cost in dollars per 1M tokens"
+                  value={outputCostMin}
+                  onChange={(e) => setOutputCostMin(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="Max $/1M"
+                  aria-label="Maximum output cost in dollars per 1M tokens"
+                  value={outputCostMax}
+                  onChange={(e) => setOutputCostMax(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Task cost range"
+                help="This range keeps only variants whose effective task cost in dollars falls between min and max. Empty means no bound."
+              />
+              <div className="flex items-center gap-1.5">
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="Min $"
+                  aria-label="Minimum effective task cost in dollars"
+                  value={taskCostMin}
+                  onChange={(e) => setTaskCostMin(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <Input
+                  className="h-8 text-xs"
+                  type="number"
+                  min={0}
+                  step="any"
+                  placeholder="Max $"
+                  aria-label="Maximum effective task cost in dollars"
+                  value={taskCostMax}
+                  onChange={(e) => setTaskCostMax(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Cost ranges"
+                help="This button clears all three cost ranges."
+              />
+              <div className="flex h-8 items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={!hasCostRange}
+                  onClick={clearCostRanges}
+                >
+                  Clear cost ranges
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1262,6 +1459,8 @@ export function ModelExplorer() {
       <p className="max-w-4xl text-sm leading-relaxed text-muted-foreground">
         The default view keeps Artificial Analysis Intelligence at {DEFAULT_INTELLIGENCE_FLOOR} or higher.
         The table ranks models by the Effiq Score.
+        The EQ (Effiq) Score is not fixed — it changes with your requirements:
+        the usage profile, metric weights, floors, and filters all move the ranking.
         The score compares capability against task cost, latency, and throughput.
         Approximated model variants have clear labels.
         Primary data sources are Artificial Analysis, OpenRouter, Cursor, and OpenCode Go.

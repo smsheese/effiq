@@ -69,7 +69,8 @@ npm run sync
 | Cursor CSV | Effort/fast/thinking variants + Cursor prices | CSV file (key only to regenerate) |
 | OpenCode Go seed | 28 Go models + published token prices + Zen endpoints | Bundled `data/opencode-go.json` |
 
-Website pages (not APIs) feed Cursor pricing, OpenCode Go, and CursorBench.
+Website pages (not APIs) feed Cursor pricing and OpenCode Go (CursorBench stays
+a manual snapshot — its results page is JS-rendered with no readable table).
 `npm run sync:agent` refreshes those seeds with an OpenRouter model
 (`OPENROUTER_API_KEY`, optional `REFRESH_MODEL`) before `npm run sync` merges
 them; it skips cleanly without a key.

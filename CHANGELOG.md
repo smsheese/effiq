@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Agent seed refresh (`scripts/agent_refresh.py`, `npm run sync:agent`): fetches the docs sites' machine-readable markdown (`cursor.com/docs/models-and-pricing.md`, `opencode.ai/docs/go.md` — the HTML pages are JS apps) and extracts rows with an OpenRouter chat model (temperature 0, JSON-only) into `data/cursor-models.csv` and `data/opencode-go.json`. Merges are update-only (new models appended, nothing deleted) with guards: minimum-row counts reject partial extractions and fast-mode rows only take prices from explicit `(Fast)` docs entries. `--dry-run` and `--self-test` supported. CursorBench is excluded by design (results only in chart SVG coordinates — trial runs confabulated rows), so it stays a manual snapshot. Wired best-effort (`continue-on-error`) into the daily sync workflow ahead of `npm run sync`; skips cleanly without `OPENROUTER_API_KEY`, model pinned via `REFRESH_MODEL` (default `openai/gpt-5.6-luna` with `high` reasoning effort, overridable via `REFRESH_REASONING_EFFORT`).
 - Explorer now persists locked weight keys (up to 4) and the active weight preset in local storage alongside weights, profile, and intelligence floor.
+- Explorer weight sliders get a lock toggle: locked sliders stay fixed while the remaining sliders share the weight remainder, with hover help, a locked counter, and the lock limit surfaced in tooltips.
 - Explorer cost range filters: min–max inputs for input $/1M, output $/1M, and effective task $ with a one-click clear.
 
 ### Fixed
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Header tagline names all three provider channels (OpenRouter, Cursor, and OpenCode Go).
+- Copy on the home hero, explorer footer, and `llms.txt` clarifies that the EQ (Effiq) Score is not fixed — it changes with the visitor's profile, weights, floors, and filters.
 - Data refresh: matrix re-synced on 2026-09-07 with 1184 variants (0 added, 0 removed). All live sources healthy — Artificial Analysis (643 rows), Cursor (363), OpenRouter (982), OpenCode Go (28).
 - Sync workflow now passes `OPENROUTER_API_KEY` through to `npm run sync` so an optional secret enables authenticated OpenRouter fetches with higher rate limits.
 

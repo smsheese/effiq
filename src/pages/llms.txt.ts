@@ -24,6 +24,7 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 ## Notes
 - The site ranks variants in the browser after it fetches the public matrix
 - The default intelligence floor is 40. Visitors can change metric weights
+- The EQ (Effiq) Score is not fixed: it changes with visitor requirements (profile, weights, floors, filters)
 - Artificial Analysis measured task cost is the primary cost evidence
 `;
 
