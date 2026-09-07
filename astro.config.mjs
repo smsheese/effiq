@@ -9,7 +9,6 @@ try {
 
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
-import sitemap from '@astrojs/sitemap';
 import { resolveSiteUrl } from './src/lib/site.ts';
 
 const isBuild = process.argv.includes('build');
@@ -25,9 +24,9 @@ export default defineConfig({
   site,
   integrations: [
     react(),
-    sitemap({
-      filter: (page) => !page.includes('/404') && !page.includes('/api/'),
-    }),
+    // Discovery files come from src/pages/sitemap.xml.ts — a single sitemap
+    // source of truth. The @astrojs/sitemap integration was removed because it
+    // emitted a second, conflicting /sitemap-index.xml.
   ],
 
   vite: {

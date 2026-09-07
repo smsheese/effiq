@@ -1,6 +1,6 @@
 ---
 interface Props {
-  current?: "home" | "methodology" | "none";
+  current?: "home" | "methodology" | "about" | "none";
   compact?: boolean;
 }
 
@@ -37,6 +37,13 @@ const navClass = (id: string) =>
         aria-current={current === "methodology" ? "page" : undefined}
       >
         Methodology
+      </a>
+      <a
+        href="/about/"
+        class={navClass("about")}
+        aria-current={current === "about" ? "page" : undefined}
+      >
+        About
       </a>
       <a
         href="/api/models.json"

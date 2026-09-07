@@ -3,6 +3,7 @@ import Layout from "@/layouts/Layout.astro";
 import SiteHeader from "@/components/SiteHeader.astro";
 import SiteFooter from "@/components/SiteFooter.astro";
 import { ModelExplorer } from "@/components/ModelExplorer";
+import { formatMoney, getTopPicks } from "@/lib/topPicks";
 import {
   PAGES,
   buildJsonLdGraph,
@@ -13,11 +14,30 @@ import {
 
 const page = PAGES.home;
 const site = Astro.site?.href ?? "http://localhost:4321/";
+const picks = getTopPicks();
 const jsonLd = buildJsonLdGraph(site, [
   websiteJsonLd(site),
-  webApplicationJsonLd(site),
-  datasetJsonLd(site),
+  webApplicationJsonLd(site, picks.generatedAt),
+  datasetJsonLd(site, picks.generatedAt),
 ]);
+
+const generatedDate = new Date(picks.generatedAt);
+const timeAttr = generatedDate.toISOString();
+const timeLabel = generatedDate.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+const th =
+  "h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+const td = "px-4 py-3 align-middle text-sm text-foreground";
+const tr = "border-b border-border/80 last:border-0";
+
+const best = picks.leaders.best;
+const cheapest = picks.leaders.cheapest;
+const cheapestCost = cheapest ? formatMoney(cheapest.taskCostUsd) : null;
 ---
 
 <Layout
@@ -38,7 +58,8 @@ const jsonLd = buildJsonLdGraph(site, [
           {page.heading}
         </h1>
         <p class="text-base leading-relaxed text-muted-foreground sm:text-lg">
-          Rank LLM reasoning variants by capability per measured or estimated task dollar.
+          Compare LLM costs per task and rank <strong class="font-semibold text-foreground">reasoning variants</strong>
+          by capability per measured or estimated task dollar.
           The default view keeps Artificial Analysis Intelligence at
           <strong class="font-semibold text-foreground">40</strong> or more.
           The EQ (Effiq) Score is not fixed — it changes with your requirements:
@@ -60,6 +81,88 @@ const jsonLd = buildJsonLdGraph(site, [
         </div>
       </header>
     </div>
+
+    <section
+      aria-labelledby="top-picks-heading"
+      class="mx-auto max-w-[1500px] space-y-5 px-4 pb-4"
+    >
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="top-picks-heading" class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Top picks right now
+        </h2>
+        <p class="text-xs text-muted-foreground">
+          Matrix refreshed
+          <time datetime={timeAttr} class="font-medium text-foreground">{timeLabel}</time> (UTC).
+          <a href="/api/health" class="underline-offset-4 hover:underline">Freshness details</a>.
+        </p>
+      </div>
+      <p class="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        This snapshot uses the default weights (35% intelligence, 15% coding, 10% agentic,
+        30% task cost, 5% latency, 5% throughput) and the default intelligence floor of 40.
+        {
+        best && (
+          <>
+            The highest Effiq Score right now is <strong class="font-semibold text-foreground">{best.name}</strong>
+            at <strong class="font-semibold text-foreground">{best.score?.toFixed(1)}</strong>.
+          </>
+        )
+        }
+        {
+        cheapest && cheapestCost && (
+          <>
+            {" "}The cheapest qualifying task cost is <strong class="font-semibold text-foreground">{cheapestCost}</strong>
+            per task on <strong class="font-semibold text-foreground">{cheapest.name}</strong>.
+          </>
+        )
+        }
+        {" "}Open the explorer below to change profiles, weights, floors, and filters.
+      </p>
+
+      <div class="overflow-x-auto rounded-2xl border border-border bg-card shadow-xs">
+        <table class="w-full caption-bottom text-sm">
+          <thead class="bg-muted/50">
+            <tr class="border-b border-border">
+              <th scope="col" class={th}>#</th>
+              <th scope="col" class={th}>Model variant</th>
+              <th scope="col" class={`${th} text-right`}>Effiq Score</th>
+              <th scope="col" class={`${th} text-right`}>Intel</th>
+              <th scope="col" class={`${th} text-right`}>Task $</th>
+              <th scope="col" class={`${th} text-right`}>In $/1M</th>
+              <th scope="col" class={`${th} text-right`}>Out $/1M</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              picks.rows.map((row) => (
+                <tr class={tr}>
+                  <td class={`${td} font-mono tabular-nums text-muted-foreground`}>{row.rank}</td>
+                  <td class={td}>
+                    <span class="font-medium">{row.name}</span>
+                    <span class="text-xs text-muted-foreground"> · {row.effort} · {row.provider}</span>
+                  </td>
+                  <td class={`${td} text-right font-mono font-semibold tabular-nums text-primary`}>
+                    {row.efficiencyScore?.toFixed(1) ?? "—"}
+                  </td>
+                  <td class={`${td} text-right font-mono tabular-nums`}>{row.intelligence?.toFixed(1) ?? "—"}</td>
+                  <td class={`${td} text-right font-mono tabular-nums`}>{formatMoney(row.taskCostUsd)}</td>
+                  <td class={`${td} text-right font-mono tabular-nums text-muted-foreground`}>
+                    {row.inputUsdPerMillion != null ? `$${row.inputUsdPerMillion.toFixed(2)}` : "—"}
+                  </td>
+                  <td class={`${td} text-right font-mono tabular-nums text-muted-foreground`}>
+                    {row.outputUsdPerMillion != null ? `$${row.outputUsdPerMillion.toFixed(2)}` : "—"}
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="text-xs text-muted-foreground">
+        Snapshot of {picks.rankedCount} ranked variants from {picks.variantCount} total. Estimated
+        values keep their labels in the live explorer below.
+      </p>
+    </section>
+
     <ModelExplorer client:idle />
   </main>
 

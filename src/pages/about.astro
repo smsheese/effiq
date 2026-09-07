@@ -1,0 +1,142 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
+import {
+  PAGES,
+  buildJsonLdGraph,
+  websiteJsonLd,
+  breadcrumbJsonLd,
+} from "@/lib/site";
+
+const page = PAGES.about;
+const site = Astro.site?.href ?? "http://localhost:4321/";
+const jsonLd = buildJsonLdGraph(site, [
+  websiteJsonLd(site),
+  breadcrumbJsonLd(site, [
+    { name: "Home", path: "/" },
+    { name: "About", path: page.path },
+  ]),
+  {
+    "@type": "WebPage",
+    name: page.title,
+    description: page.description,
+    url: new URL(page.path, site).href,
+    isPartOf: { "@id": `${site.replace(/\/$/, "")}/#website` },
+  },
+  {
+    "@type": "Person",
+    name: "smsheese",
+    url: "https://github.com/smsheese",
+    description:
+      "Maintainer of effiq, a public tool that ranks LLM reasoning variants by capability per task dollar.",
+    sameAs: ["https://github.com/smsheese"],
+  },
+]);
+---
+
+<Layout
+  title={page.title}
+  description={page.description}
+  ogImage={page.ogImage}
+  jsonLd={jsonLd}
+>
+  <SiteHeader current="about" compact />
+
+  <main id="main-content" class="mx-auto max-w-3xl px-4 pb-16 pt-10 sm:pt-14">
+    <header class="mb-12 space-y-4 border-b border-border/80 pb-10">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        Project
+      </p>
+      <h1 class="text-4xl font-bold tracking-tight text-foreground text-balance sm:text-5xl">
+        {page.heading}
+      </h1>
+      <p class="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+        <strong class="font-semibold text-foreground">effiq</strong>
+        (efficiency × IQ) ranks LLM reasoning variants by capability per real or
+        estimated task dollar. It is a free, open-source, static site.
+      </p>
+    </header>
+
+    <div class="space-y-10">
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Who maintains effiq?
+        </h2>
+        <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+          effiq is built and maintained by
+          <a
+            href="https://github.com/smsheese"
+            class="font-medium text-primary underline-offset-4 hover:underline"
+            rel="noopener noreferrer">smsheese</a
+          > (GitHub). The project started as a practical answer to one question:
+          which reasoning variant delivers enough capability for the least task
+          dollar. The source code is public, and the daily matrix refresh runs
+          from the same repository. You can reach the maintainer by opening an
+          issue or a discussion on the GitHub repository — that is the fastest
+          route to a response.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Why capability per task dollar?
+        </h2>
+        <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Benchmark leaderboards rank models by raw capability. They do not
+          answer what a completed task costs. Two variants can sit close
+          together on intelligence while sitting far apart on price, especially
+          once reasoning effort is taken into account. effiq merges public
+          benchmark indexes with published provider prices, computes a task
+          cost per reasoning variant, and ranks the result. Measured metrics
+          stay labeled apart from estimates, and approximations keep their
+          labels in the explorer.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          How do I report a problem?
+        </h2>
+        <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Wrong price, missing model, or a score that looks off — open an issue
+          on
+          <a
+            href="https://github.com/smsheese/effiq"
+            class="font-medium text-primary underline-offset-4 hover:underline"
+            rel="noopener noreferrer">github.com/smsheese/effiq</a
+          >. The
+          <a href="/methodology/" class="font-medium text-primary underline-offset-4 hover:underline"
+            >methodology page</a
+          >
+          documents how scores are computed, and the
+          <a href="/api/health" class="font-medium text-primary underline-offset-4 hover:underline"
+            >health endpoint</a
+          >
+          reports matrix freshness.
+        </p>
+      </section>
+
+      <section class="space-y-3">
+        <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          License and attribution
+        </h2>
+        <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+          effiq is MIT-licensed. Benchmark indexes and measured task costs come
+          from
+          <a href="https://artificialanalysis.ai" class="text-primary underline-offset-4 hover:underline"
+            >Artificial Analysis</a
+          >. Provider catalog and live routing metrics come from
+          <a href="https://openrouter.ai" class="text-primary underline-offset-4 hover:underline">OpenRouter</a>.
+          Cursor variant pricing comes from Cursor public docs. OpenCode Go
+          pricing comes from
+          <a href="https://opencode.ai/docs/go/" class="text-primary underline-offset-4 hover:underline"
+            >OpenCode Go docs</a
+          >. Full attribution lives in the repository README.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <SiteFooter compact />
+</Layout>

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Server-rendered "Top picks right now" section on the home page: a static top-10 ranking table, headline leaders, and concrete model/price sentences built at build time from the canonical matrix (`src/lib/topPicks.ts`). Crawlers and JS-less AI agents now see the primary content in the initial HTML instead of "Loading Effiq rankings…".
+- `/about/` page with maintainer identity, contact route, and `Person` + `WebPage` JSON-LD; About link added to header nav and footer; footer attribution now links to the maintainer and the GitHub repository.
+- Visible matrix freshness stamps (`<time datetime>` fed from the daily build) on the home page and methodology page, plus `dateModified` in `WebPage` JSON-LD on methodology.
+- `topPicks.test.ts` covers the snapshot shape (row limit, descending scores, leader consistency).
 - Agent seed refresh (`scripts/agent_refresh.py`, `npm run sync:agent`): fetches the docs sites' machine-readable markdown (`cursor.com/docs/models-and-pricing.md`, `opencode.ai/docs/go.md` — the HTML pages are JS apps) and extracts rows with an OpenRouter chat model (temperature 0, JSON-only) into `data/cursor-models.csv` and `data/opencode-go.json`. Merges are update-only (new models appended, nothing deleted) with guards: minimum-row counts reject partial extractions and fast-mode rows only take prices from explicit `(Fast)` docs entries. `--dry-run` and `--self-test` supported. CursorBench is excluded by design (results only in chart SVG coordinates — trial runs confabulated rows), so it stays a manual snapshot. Wired best-effort (`continue-on-error`) into the daily sync workflow ahead of `npm run sync`; skips cleanly without `OPENROUTER_API_KEY`, model pinned via `REFRESH_MODEL` (default `openai/gpt-5.6-luna` with `high` reasoning effort, overridable via `REFRESH_REASONING_EFFORT`).
 - Explorer now persists locked weight keys (up to 4) and the active weight preset in local storage alongside weights, profile, and intelligence floor.
 - Explorer weight sliders get a lock toggle: locked sliders stay fixed while the remaining sliders share the weight remainder, with hover help, a locked counter, and the lock limit surfaced in tooltips.
@@ -17,9 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Replaced the stale Astro-default `public/favicon.ico` with the eq logo (multi-size ICO matching `favicon.svg`); the tab icon no longer shows the Astro default.
+- Duplicate sitemaps resolved: the `@astrojs/sitemap` integration (which emitted a conflicting `/sitemap-index.xml` + `sitemap-0.xml`) is removed; the hand-written `/sitemap.xml` is the single source of truth, listing only HTML pages (`/`, `/methodology/`, `/about/`) with `lastmod` derived from the matrix `generatedAt` instead of wall-clock build time, and without ignored `changefreq`/`priority` fields.
+- Organization JSON-LD logo is now a raster `ImageObject` (`apple-touch-icon.png`, 180×180) instead of `favicon.svg`.
+- Homepage `WebSite` node gets an `@id`; the methodology `WebPage` references it by `@id` instead of embedding a duplicate.
+- `robots.txt` simplified to `Allow: /` plus `Disallow: /api/health` (crawlers no longer hit the health endpoint); `llms.txt` notes now describe the server-rendered snapshot and daily refresh instead of "ranks in the browser".
 
 ### Changed
 
+- Home title and H1 now target real queries: "LLM cost comparison — cheapest AI models per task dollar | effiq" / "LLM cost comparison, ranked per task dollar" (was brand-first title, "Model efficiency explorer" H1).
+- Dataset JSON-LD carries `dateModified` (from the matrix build) and `license`; `WebApplication` JSON-LD carries `dateModified` (SEO audit: freshness is the product pitch but was invisible).
+- Static OG/favicon caching raised from 1 day to 7 days in `public/_headers` (hashed `/_astro/*` assets already immutable).
+- README links the live site (https://effiq.shee.se) and fixes the clone URL to `https://github.com/smsheese/effiq.git`.
 - Header tagline names all three provider channels (OpenRouter, Cursor, and OpenCode Go).
 - Copy on the home hero, explorer footer, and `llms.txt` clarifies that the EQ (Effiq) Score is not fixed — it changes with the visitor's profile, weights, floors, and filters.
 - Data refresh: matrix re-synced on 2026-09-07 with 1184 variants (0 added, 0 removed). All live sources healthy — Artificial Analysis (643 rows), Cursor (363), OpenRouter (982), OpenCode Go (28).

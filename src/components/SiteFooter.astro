@@ -49,6 +49,7 @@ const { compact = false } = Astro.props;
         <ul class="space-y-2 text-sm">
           <li><a class="text-foreground transition-colors hover:text-primary" href="/">Explorer</a></li>
           <li><a class="text-foreground transition-colors hover:text-primary" href="/methodology/">Methodology</a></li>
+          <li><a class="text-foreground transition-colors hover:text-primary" href="/about/">About</a></li>
           <li><a class="text-foreground transition-colors hover:text-primary" href="/api/models.json">models.json</a></li>
           <li><a class="text-foreground transition-colors hover:text-primary" href="/api/models.csv">models.csv</a></li>
         </ul>
@@ -65,7 +66,11 @@ const { compact = false } = Astro.props;
     </div>
   </div>
   <div class:list={["mx-auto flex flex-wrap items-center justify-between gap-2 border-t border-border/80 px-4 py-4 text-xs text-muted-foreground", compact ? "max-w-3xl" : "max-w-[1500px]"]}>
-    <span>MIT © 2026 smsheese</span>
+    <span>
+      MIT © 2026
+      <a class="font-medium text-primary underline-offset-4 hover:underline" href="/about/">smsheese</a>
+      · <a class="underline-offset-4 hover:underline" href="https://github.com/smsheese/effiq" rel="noopener noreferrer">GitHub</a>
+    </span>
     <span class="font-mono">v0.2.0</span>
   </div>
 </footer>

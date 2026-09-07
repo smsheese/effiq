@@ -12,6 +12,7 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 ## Pages
 - Home / explorer: ${origin}/
 - Methodology: ${origin}/methodology/
+- About: ${origin}/about/
 - Models matrix (JSON): ${origin}/api/models.json
 - Models matrix (CSV): ${origin}/api/models.csv
 - Health / data freshness: ${origin}/api/health
@@ -22,10 +23,11 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 - Primary evidence: Artificial Analysis, OpenRouter, Cursor published pricing, OpenCode Go published pricing (https://opencode.ai/docs/go/)
 
 ## Notes
-- The site ranks variants in the browser after it fetches the public matrix
+- The home page ships a server-rendered top-10 ranking snapshot with the matrix date in the initial HTML; the full explorer recomputes in the browser after it fetches the public matrix
 - The default intelligence floor is 40. Visitors can change metric weights
 - The EQ (Effiq) Score is not fixed: it changes with visitor requirements (profile, weights, floors, filters)
 - Artificial Analysis measured task cost is the primary cost evidence
+- The matrix refreshes daily at 04:00 UTC; /api/health reports age and status
 `;
 
   return new Response(body, {

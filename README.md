@@ -4,6 +4,8 @@
 task dollar. The default view keeps Artificial Analysis Intelligence at **40**
 or more. Then it sorts by a public Effiq Score. You can change the weights.
 
+Live site: **https://effiq.shee.se**
+
 The site compares capability against cost at each effort level
 (`low` / `medium` / `high` / `xhigh` / `max`) across OpenRouter, Cursor,
 OpenCode Go, and Artificial Analysis.
@@ -109,7 +111,7 @@ Outputs: `data/models-matrix.json`, `data/models-matrix.csv`,
 ## Repository
 
 ```sh
-git clone git@ghsmsheese:smsheese/effiq.git
+git clone https://github.com/smsheese/effiq.git
 ```
 
 ## Attribution

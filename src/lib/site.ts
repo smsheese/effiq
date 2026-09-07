@@ -3,7 +3,7 @@
 const EXAMPLE_HOST_RE = /(^|\.)example\.(com|org|net)$/i;
 const LOCAL_HOST_RE = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
 
-export type SitePageId = "home" | "methodology" | "notFound";
+export type SitePageId = "home" | "methodology" | "about" | "notFound";
 
 export interface SitePageMeta {
   id: SitePageId;
@@ -21,11 +21,12 @@ export const PAGES: Record<SitePageId, SitePageMeta> = {
   home: {
     id: "home",
     path: "/",
-    title: "effiq — High-intelligence models per task dollar",
+    title:
+      "LLM cost comparison — cheapest AI models per task dollar | effiq",
     description:
-      "effiq ranks LLM reasoning variants by capability per task dollar. Sources are OpenRouter, Cursor, OpenCode Go, and Artificial Analysis.",
+      "Compare LLM costs per task. effiq ranks reasoning variants by capability per measured or estimated task dollar across OpenRouter, Cursor, OpenCode Go, and Artificial Analysis benchmarks.",
     ogImage: "/og.png",
-    heading: "Model efficiency explorer",
+    heading: "LLM cost comparison, ranked per task dollar",
   },
   methodology: {
     id: "methodology",
@@ -35,6 +36,15 @@ export const PAGES: Record<SitePageId, SitePageMeta> = {
       "How effiq ranks reasoning variants: intelligence floor, Effiq Score weights, sources, profiles, approximations, and data freshness.",
     ogImage: "/og-methodology.png",
     heading: "Methodology",
+  },
+  about: {
+    id: "about",
+    path: "/about/",
+    title: "About — who builds effiq",
+    description:
+      "Who builds effiq, why the project ranks capability per task dollar, and how to reach the maintainer.",
+    ogImage: "/og.png",
+    heading: "About effiq",
   },
   notFound: {
     id: "notFound",
@@ -131,13 +141,19 @@ export function organizationJsonLd(site: string) {
     url: site,
     description:
       "effiq ranks LLM reasoning variants by capability per task dollar.",
-    logo: absoluteUrl(site, "/favicon.svg"),
+    logo: {
+      "@type": "ImageObject",
+      url: absoluteUrl(site, "/apple-touch-icon.png"),
+      width: 180,
+      height: 180,
+    },
   };
 }
 
 export function websiteJsonLd(site: string) {
   return {
     "@type": "WebSite",
+    "@id": `${stripTrailingSlash(site)}/#website`,
     name: SITE_NAME,
     url: site,
     description: PAGES.home.description,
@@ -145,7 +161,7 @@ export function websiteJsonLd(site: string) {
   };
 }
 
-export function webApplicationJsonLd(site: string) {
+export function webApplicationJsonLd(site: string, generatedAt?: string) {
   return {
     "@type": "WebApplication",
     name: SITE_NAME,
@@ -153,6 +169,7 @@ export function webApplicationJsonLd(site: string) {
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Any",
     description: PAGES.home.description,
+    ...(generatedAt ? { dateModified: generatedAt } : {}),
     offers: {
       "@type": "Offer",
       price: "0",
@@ -161,7 +178,7 @@ export function webApplicationJsonLd(site: string) {
   };
 }
 
-export function datasetJsonLd(site: string) {
+export function datasetJsonLd(site: string, generatedAt?: string) {
   return {
     "@type": "Dataset",
     name: "effiq models matrix",
@@ -169,6 +186,8 @@ export function datasetJsonLd(site: string) {
       "The canonical matrix lists LLM reasoning variants with measured and estimated task costs, latency, throughput, and domain scores.",
     url: absoluteUrl(site, "/api/models.json"),
     isAccessibleForFree: true,
+    ...(generatedAt ? { dateModified: generatedAt } : {}),
+    license: "https://github.com/smsheese/effiq/blob/main/LICENSE",
     creator: { "@id": `${stripTrailingSlash(site)}/#organization` },
     distribution: [
       {

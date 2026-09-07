@@ -1,16 +1,18 @@
 import type { APIRoute } from "astro";
 import { PAGES } from "@/lib/site";
+import { loadMatrix } from "@/lib/topPicks";
 
 export const prerender = true;
 
 export const GET: APIRoute = ({ site }) => {
   const origin = (site?.origin ?? "http://localhost:4321").replace(/\/$/, "");
-  const lastmod = new Date().toISOString().slice(0, 10);
+  // lastmod comes from the matrix build, not wall-clock build time, so
+  // identical daily timestamps do not appear when nothing changed.
+  const lastmod = new Date(loadMatrix().generatedAt).toISOString().slice(0, 10);
   const urls = [
-    { loc: `${origin}/`, priority: "1.0", changefreq: "daily" },
-    { loc: `${origin}${PAGES.methodology.path}`, priority: "0.8", changefreq: "weekly" },
-    { loc: `${origin}/api/models.json`, priority: "0.6", changefreq: "daily" },
-    { loc: `${origin}/llms.txt`, priority: "0.4", changefreq: "monthly" },
+    { loc: `${origin}/` },
+    { loc: `${origin}${PAGES.methodology.path}` },
+    { loc: `${origin}${PAGES.about.path}` },
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
@@ -20,8 +22,6 @@ ${urls
     (u) => `  <url>
     <loc>${u.loc}</loc>
     <lastmod>${lastmod}</lastmod>
-    <changefreq>${u.changefreq}</changefreq>
-    <priority>${u.priority}</priority>
   </url>`,
   )
   .join("\n")}

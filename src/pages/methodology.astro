@@ -8,9 +8,19 @@ import {
   breadcrumbJsonLd,
   websiteJsonLd,
 } from "@/lib/site";
+import { loadMatrix } from "@/lib/topPicks";
 
 const page = PAGES.methodology;
 const site = Astro.site?.href ?? "http://localhost:4321/";
+const matrixGeneratedAt = loadMatrix().generatedAt;
+const generatedDate = new Date(matrixGeneratedAt);
+const timeAttr = generatedDate.toISOString();
+const timeLabel = generatedDate.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
 const jsonLd = buildJsonLdGraph(site, [
   websiteJsonLd(site),
   breadcrumbJsonLd(site, [
@@ -22,7 +32,8 @@ const jsonLd = buildJsonLdGraph(site, [
     name: page.title,
     description: page.description,
     url: new URL(page.path, site).href,
-    isPartOf: { "@type": "WebSite", name: "effiq", url: site },
+    isPartOf: { "@id": `${site.replace(/\/$/, "")}/#website` },
+    dateModified: matrixGeneratedAt,
   },
 ]);
 
@@ -64,6 +75,10 @@ const tr = "border-b border-border/80 last:border-0";
         You can change that floor and the metric weights in the
         <a href="/" class="font-medium text-primary underline-offset-4 hover:underline">model explorer</a>.
       </p>
+      <p class="text-sm leading-relaxed text-muted-foreground">
+        The data matrix behind every number on this page was refreshed
+        <time datetime={timeAttr} class="font-medium text-foreground">{timeLabel}</time> (UTC).
+      </p>
     </header>
 
     <div class="space-y-16">
@@ -71,10 +86,21 @@ const tr = "border-b border-border/80 last:border-0";
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Defaults</p>
           <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Default ranking settings
+            What are the default ranking settings?
           </h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            These values are the explorer defaults until you change them.
+            The default ranking settings are an intelligence floor of 40, Effiq Score
+            weights of 35% intelligence, 15% coding, 10% agentic, 30% task cost, 5%
+            latency, and 5% throughput, conservative bounds on, and approximations
+            on. The intelligence floor removes every reasoning variant whose
+            Artificial Analysis Intelligence Index falls below 40, so weak models
+            never enter the table. Conservative bounds mean weak estimates use the
+            worse direction: costs read higher and capability reads lower. With
+            approximations on, rows that rely on interpolated or family estimates
+            stay in the table when their confidence is high enough. These four
+            values are only defaults. Every one of them is adjustable in the
+            explorer, and the table recomputes the moment you move a slider. The
+            table below states each default and what it controls.
           </p>
         </div>
         <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
@@ -115,9 +141,21 @@ const tr = "border-b border-border/80 last:border-0";
       <section class="space-y-5">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Evidence</p>
-          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Sources</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Which sources does effiq use?</h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            effiq merges public provider and benchmark evidence into one matrix.
+            effiq uses four primary sources: Artificial Analysis, OpenRouter,
+            Cursor published pricing, and OpenCode Go published pricing, plus
+            CursorBench snapshots for measured coding capability. Artificial
+            Analysis supplies the intelligence, coding, and agentic indexes and
+            the only measured cost-per-task numbers in the matrix. OpenRouter
+            supplies live provider prices, context lengths, and endpoint latency
+            and throughput percentiles for every variant it routes. Cursor
+            pricing supplies subscription-pool variants with their effort and
+            thinking axes. OpenCode Go supplies published per-token prices for
+            28 open coding models. The nightly merge job folds all of these into
+            one canonical matrix. Derived scores from WhatLLM and LLM Stats stay
+            off until their robots and terms checks pass, and they can never
+            override the primary sources.
           </p>
         </div>
         <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
@@ -181,10 +219,21 @@ const tr = "border-b border-border/80 last:border-0";
       <section class="space-y-8">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Ranking</p>
-          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Effiq Score</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">What is the Effiq Score?</h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            The <strong class="font-semibold text-foreground">Effiq Score</strong> is the primary ranking number in the explorer.
-            Only variants that pass the intelligence floor enter the score.
+            The Effiq Score is a 0-100 number that ranks reasoning variants by
+            capability per task dollar under your current settings. Only variants
+            that pass the intelligence floor enter the score. The computation
+            happens in four steps. First, effiq percentile-ranks intelligence,
+            coding, agentic capability, and throughput among the gated set. Second,
+            it log-normalizes task cost and latency and inverts them, so a lower
+            cost and a faster response raise the score instead of lowering it.
+            Third, it combines those normalized values with the metric weights you
+            have set — the default mix is 35% intelligence, 15% coding, 10%
+            agentic, 30% task cost, 5% latency, and 5% throughput. Fourth, it
+            applies evidence-coverage and approximation penalties when the
+            evidence behind a row is thin. Because the inputs change with your
+            profile and sliders, the score is not a fixed leaderboard position.
           </p>
         </div>
 
@@ -267,10 +316,20 @@ const tr = "border-b border-border/80 last:border-0";
       <section class="space-y-5">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Workloads</p>
-          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Usage profiles</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Which usage profiles can I choose?</h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            A <strong class="font-semibold text-foreground">usage profile</strong> changes the domain evidence mix, the default weights, and the token workload for estimated task cost.
-            The explorer includes eight profiles.
+            The explorer includes eight usage profiles: General, Coding, Agents,
+            Math and Science, Finance, Research, Writing and Literature, and
+            Multimodal. A usage profile is a named preset that changes three
+            things at once: the domain evidence mix, the default metric weights,
+            and the token workload used to estimate task cost. A coding workload,
+            for example, prices a coding agent loop, while a research workload
+            prices a long-context retrieval and synthesis task. This matters
+            because a variant can win on one profile and lose on another: a cheap
+            generalist can beat a costly specialist at document analysis and then
+            lose to it on hard reasoning. The profile table below lists each
+            profile, its focus, and its workload label. Pick a profile first, then
+            fine-tune the sliders if the preset is close but not exact.
           </p>
         </div>
         <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
@@ -299,10 +358,21 @@ const tr = "border-b border-border/80 last:border-0";
       <section class="space-y-5">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gaps</p>
-          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Approximations</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">How does effiq estimate missing reasoning variants?</h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Many providers publish only some effort levels.
-            Missing reasoning variants use this ladder:
+            Missing reasoning variants follow a five-step estimation ladder, and
+            every estimate keeps its label in the explorer. Many providers publish
+            prices or benchmarks for only some effort levels of the same model.
+            Rather than dropping those variants, effiq fills the gap in a fixed
+            order: use direct measured evidence when it exists for that exact
+            effort; otherwise interpolate between two measured efforts in the same
+            family; otherwise extrapolate from the nearest measured effort;
+            otherwise estimate from the family aggregate plus an effort curve. If
+            even that fails, the field stays empty — effiq never fabricates a
+            value. Each fallback step lowers confidence, and the confidence value
+            feeds the min-confidence filter in the explorer. With conservative
+            ranking on, the estimate uses the less favorable bound: a higher cost
+            or a lower capability number.
           </p>
         </div>
         <ol class="grid gap-3">
@@ -335,10 +405,20 @@ const tr = "border-b border-border/80 last:border-0";
       <section class="space-y-5">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Cursor</p>
-          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cursor section</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">What changes in the Cursor section?</h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            The explorer can limit the table to Cursor variants.
-            In that view, CursorBench evidence has higher weight.
+            In the Cursor section, CursorBench evidence carries 2.5× weight in
+            domain capability, and measured CursorBench task cost is preferred
+            wherever it exists. The Cursor section is a provider-scoped view of
+            the same ranking engine: it limits the table to variants available on
+            Cursor's subscription pool, which publish their own effort and
+            thinking axes and their own token prices. Because the visitor has
+            chosen Cursor as the channel, the official Cursor agent benchmark
+            (CursorBench 3.2, measured across 60 configurations) becomes the
+            dominant coding signal instead of a shared one, so rankings inside
+            the section can differ from the all-providers view. A banner in the
+            explorer states when this section is active, so the changed weighting
+            is never silent.
           </p>
         </div>
         <ul class="grid gap-3">
@@ -357,10 +437,18 @@ const tr = "border-b border-border/80 last:border-0";
       <section class="space-y-5">
         <div class="space-y-2">
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Freshness</p>
-          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Data freshness</h2>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">How fresh is the data?</h2>
           <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            A GitHub Actions workflow refreshes the matrix daily at <strong class="font-semibold text-foreground">04:00 UTC</strong>.
-            The health endpoint reports matrix age and sync status.
+            A GitHub Actions workflow refreshes the matrix daily at 04:00 UTC.
+            The nightly job re-reads every source, re-merges them into the
+            canonical matrix, and republishes the static site, so a price change
+            at any provider reaches the rankings within a day. The most recent
+            refresh happened <time datetime={timeAttr} class="font-medium text-foreground">{timeLabel}</time>
+            (UTC). Freshness is machine-readable as well: the health endpoint
+            reports matrix age and sync status as JSON, the matrix files carry a
+            <code>generatedAt</code> timestamp, and the JSON-LD on both pages
+            states <code>dateModified</code>. If a refresh fails, the site keeps
+            serving the previous matrix rather than an empty table.
           </p>
         </div>
         <div class="grid gap-3 sm:grid-cols-3">
