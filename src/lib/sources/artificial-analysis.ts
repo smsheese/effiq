@@ -73,6 +73,20 @@ export function adaptArtificialAnalysis(
 
     const ttft = perf.median_time_to_first_token_seconds;
     const latencyMs = ttft != null ? ttft * 1000 : null;
+    const taskTimeSeconds = perf.median_end_to_end_response_time_seconds;
+
+    let taskTokens: number | null = null;
+    if (perf.median_output_tokens_per_second != null && taskTimeSeconds != null) {
+      const outTokens = Math.round(Math.max(0, taskTimeSeconds - (ttft ?? 0)) * perf.median_output_tokens_per_second);
+      if (cost?.cost_per_task?.total_cost != null && pricing.price_1m_input_tokens != null && pricing.price_1m_input_tokens > 0) {
+        const outCost = (outTokens * (pricing.price_1m_output_tokens ?? 0)) / 1e6;
+        const inCost = Math.max(0, cost.cost_per_task.total_cost - outCost);
+        const inTokens = Math.round((inCost * 1e6) / pricing.price_1m_input_tokens);
+        taskTokens = inTokens + outTokens;
+      } else if (outTokens > 0) {
+        taskTokens = outTokens;
+      }
+    }
 
     const variant: ModelVariant = {
       canonicalId: canonicalVariantId({ familySlug, effort, thinking, fast, channel: "aa" }),
@@ -108,6 +122,8 @@ export function adaptArtificialAnalysis(
         throughputTps: sn(perf.median_output_tokens_per_second ?? null, "tokens_per_second", observedAt),
         ttftSeconds: sn(ttft ?? null, "seconds", observedAt),
         latencyMs: sn(latencyMs, "milliseconds", observedAt),
+        taskTimeSeconds: sn(taskTimeSeconds ?? null, "seconds", observedAt),
+        taskTokens: sn(taskTokens, "tokens", observedAt),
         inputUsdPerMillion: sn(pricing.price_1m_input_tokens ?? null, "usd_per_million_tokens", observedAt),
         outputUsdPerMillion: sn(pricing.price_1m_output_tokens ?? null, "usd_per_million_tokens", observedAt),
         cacheReadUsdPerMillion: sn(pricing.price_1m_cache_hit_tokens ?? null, "usd_per_million_tokens", observedAt),

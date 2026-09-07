@@ -1,0 +1,64 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
+import {
+  PAGES,
+  buildJsonLdGraph,
+  breadcrumbJsonLd,
+} from "@/lib/site";
+
+const page = PAGES.notFound;
+const site = Astro.site?.href ?? "http://localhost:4321/";
+const jsonLd = buildJsonLdGraph(site, [
+  breadcrumbJsonLd(site, [
+    { name: "Home", path: "/" },
+    { name: "Page not found", path: "/404/" },
+  ]),
+]);
+---
+
+<Layout
+  title={page.title}
+  description={page.description}
+  ogImage={page.ogImage}
+  jsonLd={jsonLd}
+  noindex
+>
+  <SiteHeader current="none" compact />
+
+  <main id="main-content" class="mx-auto flex min-h-[70vh] max-w-3xl flex-col justify-center px-4 py-16 sm:py-20">
+    <header class="space-y-4">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">404</p>
+      <h1 class="text-4xl font-bold tracking-tight text-foreground text-balance sm:text-5xl">
+        {page.heading}
+      </h1>
+      <p class="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+        That URL is not part of effiq.
+        Use the explorer to rank models, or read how scoring works.
+      </p>
+    </header>
+    <div class="mt-10 flex flex-wrap gap-3">
+      <a
+        href="/"
+        class="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+      >
+        Open the explorer
+      </a>
+      <a
+        href="/methodology/"
+        class="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-secondary"
+      >
+        Methodology
+      </a>
+      <a
+        href="/api/models.json"
+        class="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-secondary"
+      >
+        Download matrix
+      </a>
+    </div>
+  </main>
+
+  <SiteFooter compact />
+</Layout>

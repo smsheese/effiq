@@ -18,6 +18,7 @@ import { emptyOfferFromAa } from "./sources/artificial-analysis";
 const SOURCE_PRIORITY: Record<string, number> = {
   artificial_analysis: 100,
   cursor: 80,
+  opencode: 75,
   openrouter: 70,
   derived: 10,
 };
@@ -42,11 +43,17 @@ function mergeMetrics(a: ModelVariant["metrics"], b: ModelVariant["metrics"]): M
     coding: preferMetric(a.coding, b.coding),
     agentic: preferMetric(a.agentic, b.agentic),
     elo: preferMetric(a.elo, b.elo),
+    cursorBench: preferMetric(a.cursorBench ?? null, b.cursorBench ?? null),
+    cursorBenchCostUsd: preferMetric(a.cursorBenchCostUsd ?? null, b.cursorBenchCostUsd ?? null),
+    cursorBenchTokens: preferMetric(a.cursorBenchTokens ?? null, b.cursorBenchTokens ?? null),
+    cursorBenchSteps: preferMetric(a.cursorBenchSteps ?? null, b.cursorBenchSteps ?? null),
     taskCostUsd: preferMetric(a.taskCostUsd, b.taskCostUsd),
     aaTotalCostUsd: preferMetric(a.aaTotalCostUsd, b.aaTotalCostUsd),
     throughputTps: preferMetric(a.throughputTps, b.throughputTps),
     ttftSeconds: preferMetric(a.ttftSeconds, b.ttftSeconds),
     latencyMs: preferMetric(a.latencyMs, b.latencyMs),
+    taskTimeSeconds: preferMetric(a.taskTimeSeconds, b.taskTimeSeconds),
+    taskTokens: preferMetric(a.taskTokens, b.taskTokens),
     inputUsdPerMillion: preferMetric(a.inputUsdPerMillion, b.inputUsdPerMillion),
     outputUsdPerMillion: preferMetric(a.outputUsdPerMillion, b.outputUsdPerMillion),
     cacheReadUsdPerMillion: preferMetric(a.cacheReadUsdPerMillion, b.cacheReadUsdPerMillion),
@@ -78,6 +85,29 @@ function tryMatch(
   a: ModelVariant,
   b: ModelVariant,
 ): MatchEdge | null {
+  // Never merge variants with different explicit reasoning effort levels
+  if (
+    a.effort !== "unknown" &&
+    b.effort !== "unknown" &&
+    a.effort !== b.effort
+  ) {
+    return null;
+  }
+
+  // Never merge different fast-mode flags
+  if (a.fast !== b.fast) {
+    return null;
+  }
+
+  // Never merge conflicting explicit thinking flags
+  if (
+    a.thinking !== null &&
+    b.thinking !== null &&
+    a.thinking !== b.thinking
+  ) {
+    return null;
+  }
+
   const aa = aliasSet(a);
   const bb = aliasSet(b);
   for (const x of aa) {
@@ -194,9 +224,12 @@ function ranges(variants: ModelVariant[]): ModelsMatrix["benchmarkRanges"] {
     coding: collect((v) => v.metrics.coding?.value),
     agentic: collect((v) => v.metrics.agentic?.value),
     elo: collect((v) => v.metrics.elo?.value),
+    cursorBench: collect((v) => v.metrics.cursorBench?.value),
     taskCostUsd: collect((v) => v.metrics.taskCostUsd?.value),
     throughputTps: collect((v) => v.metrics.throughputTps?.value),
     latencyMs: collect((v) => v.metrics.latencyMs?.value ?? (v.metrics.ttftSeconds?.value != null ? v.metrics.ttftSeconds.value * 1000 : null)),
+    taskTimeSeconds: collect((v) => v.metrics.taskTimeSeconds?.value),
+    taskTokens: collect((v) => v.metrics.taskTokens?.value),
   };
 }
 
@@ -252,8 +285,13 @@ export function matrixToCsv(matrix: ModelsMatrix): string {
     "intelligence_status",
     "coding",
     "agentic",
+    "cursorbench_score",
+    "cursorbench_cost_usd",
+    "cursorbench_tokens",
     "task_cost_usd",
     "task_cost_status",
+    "task_time_s",
+    "task_tokens",
     "throughput_tps",
     "latency_ms",
     "input_usd_m",
@@ -279,8 +317,13 @@ export function matrixToCsv(matrix: ModelsMatrix): string {
       v.metrics.intelligence?.status ?? "",
       v.metrics.coding?.value ?? "",
       v.metrics.agentic?.value ?? "",
+      v.metrics.cursorBench?.value ?? "",
+      v.metrics.cursorBenchCostUsd?.value ?? "",
+      v.metrics.cursorBenchTokens?.value ?? "",
       v.metrics.taskCostUsd?.value ?? "",
       v.metrics.taskCostUsd?.status ?? "",
+      v.metrics.taskTimeSeconds?.value ?? "",
+      v.metrics.taskTokens?.value ?? "",
       v.metrics.throughputTps?.value ?? "",
       v.metrics.latencyMs?.value ?? "",
       v.metrics.inputUsdPerMillion?.value ?? "",

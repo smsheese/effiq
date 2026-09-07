@@ -1,54 +1,65 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
 import { ModelExplorer } from "@/components/ModelExplorer";
+import {
+  PAGES,
+  buildJsonLdGraph,
+  websiteJsonLd,
+  webApplicationJsonLd,
+  datasetJsonLd,
+} from "@/lib/site";
+
+const page = PAGES.home;
+const site = Astro.site?.href ?? "http://localhost:4321/";
+const jsonLd = buildJsonLdGraph(site, [
+  websiteJsonLd(site),
+  webApplicationJsonLd(site),
+  datasetJsonLd(site),
+]);
 ---
 
 <Layout
-  title="effiq — High-intelligence models per task dollar"
-  description="effiq ranks LLM reasoning variants by capability per measured or estimated task cost. Default Intelligence floor 40, eight usage profiles, and adjustable efficiency weights."
+  title={page.title}
+  description={page.description}
+  ogImage={page.ogImage}
+  jsonLd={jsonLd}
 >
-  <header class="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
-    <div class="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3">
-      <a href="/" class="group flex items-center gap-2.5 no-underline">
-        <span
-          class="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold tracking-tight text-primary-foreground shadow-sm"
-          aria-hidden="true"
-        >
-          eq
-        </span>
-        <span class="flex flex-col leading-none">
-          <span class="text-lg font-bold tracking-tight text-foreground">effiq</span>
-          <span class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            efficiency × iq
-          </span>
-        </span>
-      </a>
-      <nav class="ml-2 flex items-center gap-1.5">
-        <a
-          href="/methodology"
-          class="rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
-        >
-          Methodology
-        </a>
-      </nav>
-      <p class="ml-auto hidden max-w-md truncate text-sm text-muted-foreground lg:block">
-        Capability per task dollar — OpenRouter, Cursor, Artificial Analysis
-      </p>
-    </div>
-  </header>
+  <SiteHeader current="home" />
 
-  <main>
-    <ModelExplorer client:load />
+  <main id="main-content">
+    <div class="mx-auto max-w-[1500px] px-4 pb-2 pt-10 sm:pt-12">
+      <header class="mb-8 max-w-3xl space-y-4 border-b border-border/80 pb-8">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          Explorer
+        </p>
+        <h1 class="text-4xl font-bold tracking-tight text-foreground text-balance sm:text-5xl">
+          {page.heading}
+        </h1>
+        <p class="text-base leading-relaxed text-muted-foreground sm:text-lg">
+          Rank LLM reasoning variants by capability per measured or estimated task dollar.
+          The default view keeps Artificial Analysis Intelligence at
+          <strong class="font-semibold text-foreground">40</strong> or more.
+        </p>
+        <div class="flex flex-wrap gap-3 pt-1">
+          <a
+            href="/methodology/"
+            class="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-secondary"
+          >
+            Scoring methodology
+          </a>
+          <a
+            href="/api/models.json"
+            class="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            Download matrix
+          </a>
+        </div>
+      </header>
+    </div>
+    <ModelExplorer client:idle />
   </main>
 
-  <footer class="border-t border-border/80">
-    <div class="mx-auto flex max-w-[1500px] flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <p>
-        <span class="font-semibold text-foreground">effiq</span>
-        · matrix from Artificial Analysis, OpenRouter, and Cursor.
-        Approximations are labeled. Sync with <code class="rounded bg-muted px-1 py-0.5">npm run sync</code>.
-      </p>
-      <a href="/methodology" class="text-primary underline-offset-2 hover:underline">Scoring methodology</a>
-    </div>
-  </footer>
+  <SiteFooter />
 </Layout>

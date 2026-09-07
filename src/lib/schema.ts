@@ -47,6 +47,7 @@ export type MetricKey =
   | "intelligence"
   | "coding"
   | "agentic"
+  | "cursorbench"
   | "task_cost"
   | "latency"
   | "throughput"
@@ -87,7 +88,7 @@ export interface ProviderOffer {
   id: string;
   provider: string;
   providerSlug: string | null;
-  channel: "openrouter" | "cursor" | "direct" | "other";
+  channel: "openrouter" | "cursor" | "opencode" | "direct" | "other";
   variant: string | null;
   quantization: string | null;
   isFree: boolean;
@@ -132,11 +133,17 @@ export interface ModelVariant {
     coding: SourcedNumber | null;
     agentic: SourcedNumber | null;
     elo: SourcedNumber | null;
+    cursorBench?: SourcedNumber | null;
+    cursorBenchCostUsd?: SourcedNumber | null;
+    cursorBenchTokens?: SourcedNumber | null;
+    cursorBenchSteps?: SourcedNumber | null;
     taskCostUsd: SourcedNumber | null;
     aaTotalCostUsd: SourcedNumber | null;
     throughputTps: SourcedNumber | null;
     ttftSeconds: SourcedNumber | null;
     latencyMs: SourcedNumber | null;
+    taskTimeSeconds: SourcedNumber | null;
+    taskTokens: SourcedNumber | null;
     inputUsdPerMillion: SourcedNumber | null;
     outputUsdPerMillion: SourcedNumber | null;
     cacheReadUsdPerMillion: SourcedNumber | null;
@@ -228,9 +235,12 @@ export interface ModelsMatrix {
     coding: { min: number; max: number };
     agentic: { min: number; max: number };
     elo: { min: number; max: number };
+    cursorBench?: { min: number; max: number };
     taskCostUsd: { min: number; max: number };
     throughputTps: { min: number; max: number };
     latencyMs: { min: number; max: number };
+    taskTimeSeconds?: { min: number; max: number };
+    taskTokens?: { min: number; max: number };
   };
 }
 

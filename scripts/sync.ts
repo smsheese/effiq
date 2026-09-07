@@ -17,11 +17,23 @@ import { fileURLToPath } from "node:url";
 import { buildMatrix, matrixToCsv } from "../src/lib/merge.ts";
 import type { ModelsMatrix, SyncManifest } from "../src/lib/schema.ts";
 import { adaptArtificialAnalysis } from "../src/lib/sources/artificial-analysis.ts";
-import { adaptCursor, parseCsv } from "../src/lib/sources/cursor.ts";
+import { adaptCursor, attachCursorBench, type CursorBenchCatalog, parseCsv } from "../src/lib/sources/cursor.ts";
+import { adaptOpenCodeGo, type OpenCodeGoCatalog } from "../src/lib/sources/opencode-go.ts";
 import { adaptOpenRouter, type OpenRouterCatalog } from "../src/lib/sources/openrouter.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
+
+// Auto-load .env file if present
+try {
+  process.loadEnvFile(path.join(ROOT, ".env"));
+} catch {
+  try {
+    process.loadEnvFile();
+  } catch {
+    // .env file is optional
+  }
+}
 
 const OUT_DIR = process.env.OUT_DIR ?? path.join(ROOT, "data");
 const SNAPSHOT_DIR = path.join(OUT_DIR, "snapshots");
@@ -39,6 +51,18 @@ const CURSOR_CANDIDATES = [
   path.join(OUT_DIR, "cursor-models.csv"),
   path.join(OUT_DIR, "sources", "cursor-models.csv"),
   "/home/sheese/system/cursor-models.csv",
+];
+
+const CURSORBENCH_CANDIDATES = [
+  process.env.CURSORBENCH_JSON,
+  path.join(OUT_DIR, "cursorbench.json"),
+  path.join(OUT_DIR, "sources", "cursorbench.json"),
+];
+
+const OPENCODE_GO_CANDIDATES = [
+  process.env.OPENCODE_GO_JSON,
+  path.join(OUT_DIR, "opencode-go.json"),
+  path.join(OUT_DIR, "sources", "opencode-go.json"),
 ];
 
 const OR_CACHE_DEFAULT = path.join(OUT_DIR, "models-cache.json");
@@ -85,6 +109,77 @@ async function loadAa(): Promise<{
   version?: string | number;
   status: SyncManifest["sources"][0];
 }> {
+  const apiKey = process.env.ARTIFICIAL_ANALYSIS_API_KEY;
+  if (apiKey) {
+    try {
+      console.log("[*] Fetching latest live catalog from Artificial Analysis API...");
+      const allRecords: Parameters<typeof adaptArtificialAnalysis>[0] = [];
+      let page = 1;
+      let totalPages = 1;
+      let version: string | number | undefined = undefined;
+
+      while (page <= totalPages) {
+        const res = await fetch(
+          `https://artificialanalysis.ai/api/v2/language/models/free?page=${page}`,
+          {
+            headers: {
+              "x-api-key": apiKey,
+              Accept: "application/json",
+            },
+          },
+        );
+        if (!res.ok) throw new Error(`AA API HTTP ${res.status}`);
+        const json = (await res.json()) as {
+          intelligence_index_version?: number;
+          pagination?: { total_pages?: number };
+          data?: Parameters<typeof adaptArtificialAnalysis>[0];
+        };
+        version = json.intelligence_index_version ?? version;
+        totalPages = json.pagination?.total_pages ?? 1;
+        if (Array.isArray(json.data)) {
+          allRecords.push(...json.data);
+        }
+        page++;
+      }
+
+      if (allRecords.length > 0) {
+        const pulledAt = new Date().toISOString();
+        const catalogPath = path.join(OUT_DIR, "aa-catalog.json");
+        await writeFile(
+          catalogPath,
+          JSON.stringify(
+            {
+              meta: { tier: "free", intelligence_index_version: version },
+              count: allRecords.length,
+              data: allRecords,
+            },
+            null,
+            2,
+          ),
+          "utf8",
+        );
+        console.log(
+          `[+] Successfully synced ${allRecords.length} models from Artificial Analysis (Index v${version}).`,
+        );
+        return {
+          records: allRecords,
+          pulledAt,
+          version,
+          status: {
+            id: "artificial_analysis",
+            status: "ok",
+            pulledAt,
+            rowCount: allRecords.length,
+          },
+        };
+      }
+    } catch (err) {
+      console.warn(
+        `[!] Failed live fetch from Artificial Analysis: ${(err as Error).message}. Falling back to cached catalog.`,
+      );
+    }
+  }
+
   const local = await resolveFirstExisting(AA_CANDIDATES);
   if (local) {
     const raw = JSON.parse(await readFile(local, "utf8")) as {
@@ -147,17 +242,88 @@ async function loadCursor(): Promise<{
   };
 }
 
+async function loadCursorBench(): Promise<CursorBenchCatalog | null> {
+  const local = await resolveFirstExisting(CURSORBENCH_CANDIDATES);
+  if (!local) return null;
+  try {
+    const text = await readFile(local, "utf8");
+    return JSON.parse(text) as CursorBenchCatalog;
+  } catch (err) {
+    console.error("Failed to load cursorbench.json:", err);
+    return null;
+  }
+}
+
+async function loadOpenCodeGo(): Promise<{
+  catalog: OpenCodeGoCatalog | null;
+  status: SyncManifest["sources"][0];
+}> {
+  const local = await resolveFirstExisting(OPENCODE_GO_CANDIDATES);
+  if (!local) {
+    return {
+      catalog: null,
+      status: {
+        id: "opencode",
+        status: "error",
+        pulledAt: null,
+        rowCount: 0,
+        error: `Missing OpenCode Go seed (checked: ${OPENCODE_GO_CANDIDATES.filter(Boolean).join(", ")})`,
+      },
+    };
+  }
+  try {
+    const text = await readFile(local, "utf8");
+    const catalog = JSON.parse(text) as OpenCodeGoCatalog;
+    return {
+      catalog,
+      status: {
+        id: "opencode",
+        status: "ok",
+        pulledAt: catalog.observedAt ?? new Date().toISOString(),
+        rowCount: catalog.results?.length ?? 0,
+      },
+    };
+  } catch (err) {
+    return {
+      catalog: null,
+      status: {
+        id: "opencode",
+        status: "error",
+        pulledAt: null,
+        rowCount: 0,
+        error: (err as Error).message,
+      },
+    };
+  }
+}
+
 async function loadOpenRouter(): Promise<{
   data: OpenRouterCatalog | null;
   status: SyncManifest["sources"][0];
 }> {
   const cachePath = process.env.OPENROUTER_CACHE ?? OR_CACHE_DEFAULT;
-  const refresh = process.env.OPENROUTER_REFRESH === "1";
+  let isCacheStale = false;
+  if (await exists(cachePath)) {
+    try {
+      const cached = JSON.parse(await readFile(cachePath, "utf8")) as { fetchedAt?: string };
+      if (cached.fetchedAt) {
+        const ageHours = (Date.now() - new Date(cached.fetchedAt).getTime()) / (1000 * 60 * 60);
+        if (ageHours > 24) isCacheStale = true;
+      }
+    } catch {
+      isCacheStale = true;
+    }
+  }
+  const refresh = process.env.OPENROUTER_REFRESH === "1" || isCacheStale;
 
   if (refresh || !(await exists(cachePath))) {
     try {
       const url = "https://openrouter.ai/api/frontend/v1/models/find?order=most-popular";
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (process.env.OPENROUTER_API_KEY) {
+        headers["Authorization"] = `Bearer ${process.env.OPENROUTER_API_KEY}`;
+      }
+      const res = await fetch(url, { headers });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as { data: OpenRouterCatalog };
       const record = { fetchedAt: new Date().toISOString(), data: json.data };
@@ -225,11 +391,17 @@ async function main() {
     const aa = await loadAa();
     const cursor = await loadCursor();
     const or = await loadOpenRouter();
+    const benchCatalog = await loadCursorBench();
+    const go = await loadOpenCodeGo();
 
     const observedAt = new Date().toISOString();
     const aaVariants = adaptArtificialAnalysis(aa.records, aa.pulledAt, aa.version);
-    const cursorVariants = adaptCursor(cursor.rows as never, observedAt);
+    let cursorVariants = adaptCursor(cursor.rows as never, observedAt);
+    if (benchCatalog) {
+      cursorVariants = attachCursorBench(cursorVariants, benchCatalog);
+    }
     const orVariants = or.data ? adaptOpenRouter(or.data, or.status.pulledAt ?? observedAt) : [];
+    const goVariants = go.catalog ? adaptOpenCodeGo(go.catalog, observedAt) : [];
 
     const prevPath = path.join(OUT_DIR, "models-matrix.json");
     let previousIds: Set<string> | undefined;
@@ -246,13 +418,7 @@ async function main() {
       aa.status,
       cursor.status,
       or.status,
-      {
-        id: "opencode",
-        status: "skipped",
-        pulledAt: null,
-        rowCount: 0,
-        error: "Registry URL not configured",
-      },
+      go.status,
       {
         id: "kilocode",
         status: "skipped",
@@ -277,7 +443,13 @@ async function main() {
     ];
 
     // AA first so measured benchmarks win merge priority ties via order
-    const matrix = buildMatrix([aaVariants, orVariants, cursorVariants], sources, previousIds);
+    let matrix = buildMatrix([aaVariants, orVariants, cursorVariants, goVariants], sources, previousIds);
+    if (benchCatalog) {
+      matrix = {
+        ...matrix,
+        variants: attachCursorBench(matrix.variants, benchCatalog),
+      };
+    }
 
     const jsonPath = path.join(OUT_DIR, "models-matrix.json");
     const csvPath = path.join(OUT_DIR, "models-matrix.csv");

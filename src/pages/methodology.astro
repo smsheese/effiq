@@ -1,71 +1,393 @@
 ---
 import Layout from "@/layouts/Layout.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
+import {
+  PAGES,
+  buildJsonLdGraph,
+  breadcrumbJsonLd,
+  websiteJsonLd,
+} from "@/lib/site";
+
+const page = PAGES.methodology;
+const site = Astro.site?.href ?? "http://localhost:4321/";
+const jsonLd = buildJsonLdGraph(site, [
+  websiteJsonLd(site),
+  breadcrumbJsonLd(site, [
+    { name: "Home", path: "/" },
+    { name: "Methodology", path: page.path },
+  ]),
+  {
+    "@type": "WebPage",
+    name: page.title,
+    description: page.description,
+    url: new URL(page.path, site).href,
+    isPartOf: { "@type": "WebSite", name: "effiq", url: site },
+  },
+]);
+
+const th =
+  "h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+const td = "px-4 py-3 align-middle text-sm text-foreground";
+const tr = "border-b border-border/80 last:border-0";
 ---
 
 <Layout
-  title="Methodology — effiq"
-  description="How effiq calculates domain scores, task costs, approximations, and efficiency rankings."
+  title={page.title}
+  description={page.description}
+  ogImage={page.ogImage}
+  jsonLd={jsonLd}
 >
-  <header class="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
-    <div class="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-      <a href="/" class="flex items-center gap-2.5 no-underline">
-        <span
-          class="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold tracking-tight text-primary-foreground shadow-sm"
-          aria-hidden="true"
-        >
-          eq
-        </span>
-        <span class="flex flex-col leading-none">
-          <span class="text-lg font-bold tracking-tight text-foreground">effiq</span>
-          <span class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-            efficiency × iq
-          </span>
-        </span>
-      </a>
-      <span class="ml-auto text-xs font-medium text-muted-foreground">Methodology</span>
+  <SiteHeader current="methodology" compact />
+
+  <main id="main-content" class="mx-auto max-w-3xl px-4 pb-16 pt-10 sm:pt-14">
+    <header class="mb-14 space-y-4 border-b border-border/80 pb-10">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        Scoring guide
+      </p>
+      <h1 class="text-4xl font-bold tracking-tight text-foreground text-balance sm:text-5xl">
+        {page.heading}
+      </h1>
+      <p class="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+        <strong class="font-semibold text-foreground">effiq</strong> ranks LLM
+        <strong class="font-semibold text-foreground">reasoning variants</strong> by capability per task dollar.
+        A reasoning variant is one model at one effort level, such as
+        <em class="italic">medium</em> or <em class="italic">high</em>.
+      </p>
+      <aside class="rounded-2xl border border-primary/20 bg-secondary/60 px-5 py-4 text-sm leading-relaxed text-foreground sm:text-base">
+        The product question is not "which model is smartest."
+        The product question is which variant delivers enough capability for the least real or estimated task dollar.
+      </aside>
+      <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+        The default <strong class="font-semibold text-foreground">intelligence floor</strong> keeps the Artificial Analysis Intelligence Index at
+        <strong class="font-semibold text-foreground">40</strong> or more.
+        You can change that floor and the metric weights in the
+        <a href="/" class="font-medium text-primary underline-offset-4 hover:underline">model explorer</a>.
+      </p>
+    </header>
+
+    <div class="space-y-16">
+      <section class="space-y-5">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Defaults</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Default ranking settings
+          </h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            These values are the explorer defaults until you change them.
+          </p>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
+          <table class="w-full caption-bottom text-sm">
+            <thead class="bg-muted/50">
+              <tr class="border-b border-border">
+                <th scope="col" class={th}>Setting</th>
+                <th scope="col" class={th}>Default</th>
+                <th scope="col" class={th}>Meaning</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class={tr}>
+                <td class={td}>Intelligence floor</td>
+                <td class={`${td} font-mono font-semibold tabular-nums`}>40</td>
+                <td class={`${td} text-muted-foreground`}>Variants below this Artificial Analysis Intelligence Index leave the table.</td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>Effiq Score weights</td>
+                <td class={`${td} font-mono font-semibold tabular-nums`}>35 / 15 / 10 / 30 / 5 / 5</td>
+                <td class={`${td} text-muted-foreground`}>Intelligence, coding, agentic, task cost, latency, throughput.</td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>Conservative bounds</td>
+                <td class={`${td} font-semibold`}>On</td>
+                <td class={`${td} text-muted-foreground`}>Weak estimates use a worse bound: higher cost, lower capability.</td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>Approximations</td>
+                <td class={`${td} font-semibold`}>On</td>
+                <td class={`${td} text-muted-foreground`}>If confidence is high enough, rows with interpolated or family estimates stay in the table.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="space-y-5">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Evidence</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Sources</h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            effiq merges public provider and benchmark evidence into one matrix.
+          </p>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
+          <table class="w-full caption-bottom text-sm">
+            <thead class="bg-muted/50">
+              <tr class="border-b border-border">
+                <th scope="col" class={th}>Source</th>
+                <th scope="col" class={th}>What it supplies</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class={tr}>
+                <td class={td}>
+                  <a class="font-semibold text-primary underline-offset-4 hover:underline" href="https://artificialanalysis.ai" rel="noopener noreferrer">Artificial Analysis</a>
+                </td>
+                <td class={`${td} text-muted-foreground`}>
+                  Intelligence, coding, and agentic indexes. Measured cost per task. Throughput and time to first token.
+                </td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>
+                  <a class="font-semibold text-primary underline-offset-4 hover:underline" href="https://openrouter.ai" rel="noopener noreferrer">OpenRouter</a>
+                </td>
+                <td class={`${td} text-muted-foreground`}>
+                  Live provider prices, context length, and endpoint latency and throughput percentiles.
+                </td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>
+                  <a class="font-semibold text-primary underline-offset-4 hover:underline" href="https://cursor.com/docs/models-and-pricing" rel="noopener noreferrer">Cursor Pricing</a>
+                </td>
+                <td class={`${td} text-muted-foreground`}>
+                  Subscription-pool variants, effort and thinking axes, and published token prices.
+                </td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>
+                  <a class="font-semibold text-primary underline-offset-4 hover:underline" href="https://opencode.ai/docs/go/" rel="noopener noreferrer">OpenCode Go</a>
+                </td>
+                <td class={`${td} text-muted-foreground`}>
+                  Published per-token prices for 28 open coding models on the $10/month OpenCode Zen plan, with Zen endpoint shapes.
+                </td>
+              </tr>
+              <tr class={tr}>
+                <td class={td}>
+                  <a class="font-semibold text-primary underline-offset-4 hover:underline" href="https://cursor.com/cursorbench" rel="noopener noreferrer">CursorBench</a>
+                </td>
+                <td class={`${td} text-muted-foreground`}>
+                  Official Cursor agent benchmarks (CursorBench 3.2). Measured coding capability, cost per task, tokens, and steps across 60 configurations.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-sm leading-relaxed text-muted-foreground">
+          WhatLLM and LLM Stats adapters stay off until robots and terms checks pass.
+          Their derived scores never override Artificial Analysis or official provider prices.
+        </p>
+      </section>
+
+      <section class="space-y-8">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Ranking</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Effiq Score</h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            The <strong class="font-semibold text-foreground">Effiq Score</strong> is the primary ranking number in the explorer.
+            Only variants that pass the intelligence floor enter the score.
+          </p>
+        </div>
+
+        <ol class="grid gap-3 sm:gap-4">
+          {
+            [
+              "Percentile-rank intelligence, coding, agentic, and throughput among the gated set.",
+              "Log-normalize task cost and latency, then invert them so lower cost and lower latency raise the score.",
+              "Combine the normalized values with the user weights.",
+              "Apply evidence-coverage and approximation penalties if the evidence is thin.",
+            ].map((step, index) => (
+              <li class="flex gap-4 rounded-2xl border border-border bg-card px-4 py-4 shadow-xs sm:px-5">
+                <span class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+                  {index + 1}
+                </span>
+                <span class="pt-1 text-sm leading-relaxed text-foreground sm:text-base">{step}</span>
+              </li>
+            ))
+          }
+        </ol>
+
+        <div class="space-y-5">
+          <h3 class="text-xl font-semibold tracking-tight text-foreground">Default weight mix</h3>
+          <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
+            <table class="w-full caption-bottom text-sm">
+              <thead class="bg-muted/50">
+                <tr class="border-b border-border">
+                  <th scope="col" class={th}>Metric</th>
+                  <th scope="col" class={th}>Default weight</th>
+                  <th scope="col" class={th}>What a higher weight favors</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class={tr}>
+                  <td class={td}>Intelligence</td>
+                  <td class={`${td} font-mono font-semibold tabular-nums`}>35%</td>
+                  <td class={`${td} text-muted-foreground`}>General reasoning on the Artificial Analysis Intelligence Index.</td>
+                </tr>
+                <tr class={tr}>
+                  <td class={td}>Coding</td>
+                  <td class={`${td} font-mono font-semibold tabular-nums`}>15%</td>
+                  <td class={`${td} text-muted-foreground`}>Coding benchmarks, including CursorBench when present.</td>
+                </tr>
+                <tr class={tr}>
+                  <td class={td}>Agentic</td>
+                  <td class={`${td} font-mono font-semibold tabular-nums`}>10%</td>
+                  <td class={`${td} text-muted-foreground`}>Tool use and multi-step agent benchmarks.</td>
+                </tr>
+                <tr class={tr}>
+                  <td class={td}>Task cost</td>
+                  <td class={`${td} font-mono font-semibold tabular-nums`}>30%</td>
+                  <td class={`${td} text-muted-foreground`}>Lower dollar cost per task.</td>
+                </tr>
+                <tr class={tr}>
+                  <td class={td}>Latency</td>
+                  <td class={`${td} font-mono font-semibold tabular-nums`}>5%</td>
+                  <td class={`${td} text-muted-foreground`}>Faster first-token and round-trip response.</td>
+                </tr>
+                <tr class={tr}>
+                  <td class={td}>Throughput</td>
+                  <td class={`${td} font-mono font-semibold tabular-nums`}>5%</td>
+                  <td class={`${td} text-muted-foreground`}>More output tokens per second.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="space-y-3 rounded-2xl border border-border bg-card px-5 py-5 shadow-xs">
+          <h3 class="text-xl font-semibold tracking-tight text-foreground">Capability per dollar</h3>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            The explorer also shows raw <em class="italic text-foreground">capability per dollar</em>.
+            That value is the domain score divided by task cost.
+            It is <strong class="font-semibold text-foreground">not</strong> the Effiq Score.
+            Near-zero prices cannot hide other ranking factors in silence.
+          </p>
+        </div>
+      </section>
+
+      <section class="space-y-5">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Workloads</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Usage profiles</h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            A <strong class="font-semibold text-foreground">usage profile</strong> changes the domain evidence mix, the default weights, and the token workload for estimated task cost.
+            The explorer includes eight profiles.
+          </p>
+        </div>
+        <div class="overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
+          <table class="w-full caption-bottom text-sm">
+            <thead class="bg-muted/50">
+              <tr class="border-b border-border">
+                <th scope="col" class={th}>Profile</th>
+                <th scope="col" class={th}>Focus</th>
+                <th scope="col" class={th}>Workload label</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class={tr}><td class={`${td} font-medium`}>General</td><td class={`${td} text-muted-foreground`}>Broad capability with balanced cost.</td><td class={td}>Standard mixed task</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Coding</td><td class={`${td} text-muted-foreground`}>Software engineering strength and agent loops.</td><td class={td}>Coding agent loop</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Agents</td><td class={`${td} text-muted-foreground`}>Tool use, multi-step reliability, and cache.</td><td class={td}>Multi-step agent</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Math and Science</td><td class={`${td} text-muted-foreground`}>Hard reasoning and science questions.</td><td class={td}>Hard reasoning</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Finance</td><td class={`${td} text-muted-foreground`}>Numeric reasoning and document extraction.</td><td class={td}>Document analysis</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Research</td><td class={`${td} text-muted-foreground`}>Long context, retrieval, and synthesis.</td><td class={td}>Long-context research</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Writing and Literature</td><td class={`${td} text-muted-foreground`}>Style, instruction following, and long output.</td><td class={td}>Long-form writing</td></tr>
+              <tr class={tr}><td class={`${td} font-medium`}>Multimodal</td><td class={`${td} text-muted-foreground`}>Image, audio, or video plus text.</td><td class={td}>Vision + text</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="space-y-5">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Gaps</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Approximations</h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Many providers publish only some effort levels.
+            Missing reasoning variants use this ladder:
+          </p>
+        </div>
+        <ol class="grid gap-3">
+          {
+            [
+              { title: "Exact measured variant", body: "Direct measured evidence for that effort." },
+              { title: "Same-family interpolation", body: "Estimate between two measured efforts in the same family." },
+              { title: "Nearest-effort extrapolation", body: "Estimate from the closest measured effort." },
+              { title: "Family aggregate plus effort curve", body: "Estimate from the family pattern." },
+              { title: "Insufficient data", body: "No fabricated value." },
+            ].map((item, index) => (
+              <li class="rounded-2xl border border-border bg-card px-4 py-4 shadow-xs sm:px-5">
+                <div class="flex items-baseline gap-3">
+                  <span class="font-mono text-xs font-semibold tabular-nums text-primary">{index + 1}</span>
+                  <div class="space-y-1">
+                    <p class="font-semibold text-foreground">{item.title}</p>
+                    <p class="text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                  </div>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+        <aside class="rounded-2xl border border-primary/20 bg-secondary/60 px-5 py-4 text-sm leading-relaxed text-foreground sm:text-base">
+          <strong class="font-semibold">Measured</strong> and <strong class="font-semibold">estimated</strong> metrics stay labeled in the UI.
+          If confidence is limited, conservative ranking uses the less favorable bound of an estimate.
+        </aside>
+      </section>
+
+      <section class="space-y-5">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Cursor</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Cursor section</h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            The explorer can limit the table to Cursor variants.
+            In that view, CursorBench evidence has higher weight.
+          </p>
+        </div>
+        <ul class="grid gap-3">
+          <li class="rounded-2xl border border-border bg-card px-5 py-4 text-sm leading-relaxed text-foreground shadow-xs sm:text-base">
+            CursorBench capability scores use <strong class="font-semibold">2.5×</strong> weight in domain capability.
+          </li>
+          <li class="rounded-2xl border border-border bg-card px-5 py-4 text-sm leading-relaxed text-foreground shadow-xs sm:text-base">
+            Measured CursorBench task cost is preferred for Cursor models that have it.
+          </li>
+          <li class="rounded-2xl border border-border bg-card px-5 py-4 text-sm leading-relaxed text-foreground shadow-xs sm:text-base">
+            The banner in the explorer states when this Cursor section is active.
+          </li>
+        </ul>
+      </section>
+
+      <section class="space-y-5">
+        <div class="space-y-2">
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Freshness</p>
+          <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Data freshness</h2>
+          <p class="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            A GitHub Actions workflow refreshes the matrix daily at <strong class="font-semibold text-foreground">04:00 UTC</strong>.
+            The health endpoint reports matrix age and sync status.
+          </p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <a href="/api/health" class="rounded-2xl border border-border bg-card px-4 py-4 text-sm shadow-xs transition-colors hover:border-primary/40 hover:bg-secondary/40">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Freshness</p>
+            <p class="mt-2 font-mono text-sm font-medium text-primary">/api/health</p>
+          </a>
+          <a href="/api/models.json" class="rounded-2xl border border-border bg-card px-4 py-4 text-sm shadow-xs transition-colors hover:border-primary/40 hover:bg-secondary/40">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Matrix JSON</p>
+            <p class="mt-2 font-mono text-sm font-medium text-primary">/api/models.json</p>
+          </a>
+          <a href="/api/models.csv" class="rounded-2xl border border-border bg-card px-4 py-4 text-sm shadow-xs transition-colors hover:border-primary/40 hover:bg-secondary/40">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Matrix CSV</p>
+            <p class="mt-2 font-mono text-sm font-medium text-primary">/api/models.csv</p>
+          </a>
+        </div>
+        <p class="pt-2">
+          <a
+            href="/"
+            class="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          >
+            Open the model explorer
+          </a>
+        </p>
+      </section>
     </div>
-  </header>
-
-  <main class="mx-auto max-w-3xl px-4 py-10 prose prose-neutral dark:prose-invert">
-    <p><a href="/" class="text-sm no-underline text-primary hover:underline">← Back to explorer</a></p>
-    <h1>Methodology</h1>
-    <p>
-      <strong>effiq</strong> ranks model <strong>reasoning variants</strong> for token-efficiency: high capability per real or estimated task dollar.
-      The default gate keeps Artificial Analysis Intelligence Index ≥ 40. Users can move that floor and reweight metrics.
-    </p>
-
-    <h2>Sources</h2>
-    <ul>
-      <li><strong>Artificial Analysis</strong> — intelligence, coding, agentic indexes; measured cost per task; throughput and TTFT.</li>
-      <li><strong>OpenRouter</strong> — live provider prices, context, endpoint latency/throughput percentiles.</li>
-      <li><strong>Cursor</strong> — subscription-pool variants, effort/fast/thinking axes, published token prices.</li>
-    </ul>
-    <p>WhatLLM and LLM Stats scrapers are configured but skipped until robots/terms checks pass. Their derived scores never override AA or official provider prices.</p>
-
-    <h2>Efficiency Score</h2>
-    <p>Among variants that pass the intelligence floor:</p>
-    <ol>
-      <li>Percentile-rank intelligence, coding, agentic, and throughput.</li>
-      <li>Log-normalize and invert task cost and latency.</li>
-      <li>Combine with user weights (default 35/15/10/30/5/5).</li>
-      <li>Apply evidence-coverage and approximation penalties.</li>
-    </ol>
-    <p>Raw <em>capability per dollar</em> (domain score ÷ task cost) is shown separately so near-zero prices cannot silently dominate.</p>
-
-    <h2>Usage profiles</h2>
-    <p>Eight profiles change domain evidence mix, default weights, and workload token assumptions: General, Coding, Agents, Math &amp; Science, Finance, Research, Writing &amp; Literature, Multimodal.</p>
-
-    <h2>Approximations</h2>
-    <ol>
-      <li>Exact measured variant</li>
-      <li>Same-family interpolation between efforts</li>
-      <li>Nearest-effort extrapolation</li>
-      <li>Family aggregate + effort curve</li>
-      <li>Insufficient data (no fabricated value)</li>
-    </ol>
-    <p>Conservative ranking uses the less favorable bound of an estimate (higher cost / lower capability) when confidence is limited.</p>
-
-    <h2>Sync</h2>
-    <p><code>npm run sync</code> refreshes the matrix. On deployment, a GitHub Actions scheduled workflow runs daily at 04:00 UTC and refreshes the matrix automatically.</p>
   </main>
+
+  <SiteFooter compact />
 </Layout>

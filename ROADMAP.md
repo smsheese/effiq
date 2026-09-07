@@ -2,17 +2,18 @@
 
 Living plan for **effiq**. Dates are targets, not promises.
 
-## Now (v0.1.0) — shipped baseline
+## Now (v0.2.0) — three provider channels
 
 - [x] Project branded as **effiq**
-- [x] Canonical multi-source matrix (AA + OpenRouter + Cursor)
-- [x] Intelligence floor 40 + Efficiency Score + weight sliders
+- [x] Canonical multi-source matrix (AA + OpenRouter + Cursor + OpenCode Go)
+- [x] Intelligence floor 40 + Effiq Score + weight sliders
 - [x] Eight usage profiles + workload-based cost estimates
 - [x] Approximation pipeline for missing efforts
 - [x] Compare, export, methodology, Node/VPS sync timer
 - [x] Unit tests for core scoring/identity/estimation
+- [x] OpenCode Go channel: 28 published prices, explorer filter, footer version badge
 
-## Next (v0.2.0) — public GitHub + Cloudflare Pages
+## Shipped (v0.2.0) — public GitHub + Cloudflare Pages
 
 Goal: secret-free runtime on Pages; sync in CI.
 

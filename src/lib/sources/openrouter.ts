@@ -224,6 +224,8 @@ export function adaptOpenRouter(data: OpenRouterCatalog, observedAt: string): Mo
           throughputTps: sn(bestTp?.throughputTps ?? null, "tokens_per_second", observedAt),
           ttftSeconds: null,
           latencyMs: sn(bestLat?.latencyMs ?? null, "milliseconds", observedAt),
+          taskTimeSeconds: null,
+          taskTokens: null,
           inputUsdPerMillion: sn(bestPrice?.inputUsdPerMillion ?? null, "usd_per_million_tokens", observedAt),
           outputUsdPerMillion: sn(bestPrice?.outputUsdPerMillion ?? null, "usd_per_million_tokens", observedAt),
           cacheReadUsdPerMillion: sn(

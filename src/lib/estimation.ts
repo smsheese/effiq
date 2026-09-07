@@ -20,6 +20,8 @@ export type MetricField =
   | "throughputTps"
   | "ttftSeconds"
   | "latencyMs"
+  | "taskTimeSeconds"
+  | "taskTokens"
   | "inputUsdPerMillion"
   | "outputUsdPerMillion";
 
@@ -107,7 +109,7 @@ export function estimateMetric(
         ? cur
         : best,
     );
-    const costish = field === "taskCostUsd" || field === "ttftSeconds" || field === "latencyMs";
+    const costish = field === "taskCostUsd" || field === "ttftSeconds" || field === "latencyMs" || field === "taskTimeSeconds" || field === "taskTokens";
     const capability = field === "intelligence" || field === "coding" || field === "agentic";
 
     let value = nearest.value;
@@ -167,9 +169,12 @@ function unitFor(field: MetricField): string {
   switch (field) {
     case "taskCostUsd":
       return "usd_per_task";
+    case "taskTokens":
+      return "tokens";
     case "throughputTps":
       return "tokens_per_second";
     case "ttftSeconds":
+    case "taskTimeSeconds":
       return "seconds";
     case "latencyMs":
       return "milliseconds";
@@ -225,6 +230,8 @@ export function fillMissingMetrics(variants: ModelVariant[], observedAt: string)
     "throughputTps",
     "ttftSeconds",
     "latencyMs",
+    "taskTimeSeconds",
+    "taskTokens",
   ];
 
   return variants.map((v) => {
@@ -256,6 +263,29 @@ export function fillMissingMetrics(variants: ModelVariant[], observedAt: string)
           confidence: task.confidence * 0.9,
           status: task.status === "measured" ? "measured" : task.status,
           method: "task_cost_vs_family_median",
+          estimatorVersion: ESTIMATOR_VERSION,
+        };
+      }
+    }
+
+    // Fallback taskTokens from task cost and pricing if still missing
+    if (!metrics.taskTokens && metrics.taskCostUsd && metrics.inputUsdPerMillion) {
+      const cost = metrics.taskCostUsd.value;
+      const inP = metrics.inputUsdPerMillion.value;
+      const outP = metrics.outputUsdPerMillion?.value ?? inP * 3;
+      const blendedP = inP * 0.75 + outP * 0.25;
+      if (blendedP > 0) {
+        const estTokens = Math.round((cost * 1e6) / blendedP);
+        metrics.taskTokens = {
+          value: estTokens,
+          low: Math.round(estTokens * 0.7),
+          high: Math.round(estTokens * 1.3),
+          unit: "tokens",
+          source: "derived",
+          observedAt,
+          confidence: metrics.taskCostUsd.confidence * 0.8,
+          status: metrics.taskCostUsd.status === "measured" ? "family_estimate" : metrics.taskCostUsd.status,
+          method: "cost_tariff_token_estimate",
           estimatorVersion: ESTIMATOR_VERSION,
         };
       }

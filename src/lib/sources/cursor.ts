@@ -25,6 +25,25 @@ export interface CursorCsvRow {
   price_cache_write_usd_per_million?: string;
 }
 
+export interface CursorBenchItem {
+  rank: number;
+  model: string;
+  familySlug: string;
+  effort: string;
+  score: number;
+  costUsd: number;
+  tokens: number;
+  steps: number;
+}
+
+export interface CursorBenchCatalog {
+  benchmark: string;
+  url: string;
+  observedAt: string;
+  description: string;
+  results: CursorBenchItem[];
+}
+
 function parseNum(s: string | undefined): number | null {
   if (s == null || s.trim() === "") return null;
   const n = Number(s);
@@ -121,6 +140,8 @@ export function adaptCursor(rows: CursorCsvRow[], observedAt: string): ModelVari
           throughputTps: null,
           ttftSeconds: null,
           latencyMs: null,
+          taskTimeSeconds: null,
+          taskTokens: null,
           inputUsdPerMillion: sn(inP, "usd_per_million_tokens", observedAt),
           outputUsdPerMillion: sn(outP, "usd_per_million_tokens", observedAt),
           cacheReadUsdPerMillion: sn(
@@ -148,6 +169,136 @@ export function adaptCursor(rows: CursorCsvRow[], observedAt: string): ModelVari
         evidenceCoverage: 0,
       } satisfies ModelVariant;
     });
+}
+
+function matchBenchItem(v: ModelVariant, item: CursorBenchItem): boolean {
+  if (v.familySlug !== item.familySlug) {
+    // Check if canonicalId or aliases match
+    if (!v.canonicalId.includes(item.familySlug) && !v.displayName.toLowerCase().includes(item.familySlug)) {
+      return false;
+    }
+  }
+
+  // Handle composer-2-5 or kimi-k2-7-code where effort in bench is none/standard
+  if (item.familySlug === "composer-2-5" || item.familySlug === "kimi-k2-7-code") {
+    return true;
+  }
+
+  const vEffort = v.effort;
+  if (vEffort === item.effort) return true;
+
+  // Try parsing effort from display name if variant effort is unknown
+  if (vEffort === "unknown") {
+    const parsed = parseEffortFromText(v.displayName);
+    if (parsed === item.effort) return true;
+  }
+
+  return false;
+}
+
+export function attachCursorBench(
+  variants: ModelVariant[],
+  catalog: CursorBenchCatalog,
+): ModelVariant[] {
+  return variants.map((v) => {
+    const item = catalog.results.find((r) => matchBenchItem(v, r));
+    if (!item) return v;
+
+    const benchScore: SourcedNumber = {
+      value: item.score,
+      unit: "percent_0_100",
+      source: "cursor",
+      observedAt: catalog.observedAt,
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+      notes: `${catalog.benchmark} #${item.rank} (${item.steps} steps/task)`,
+    };
+
+    const benchCost: SourcedNumber = {
+      value: item.costUsd,
+      unit: "usd_per_task",
+      source: "cursor",
+      observedAt: catalog.observedAt,
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+      notes: `Measured average cost per task on ${catalog.benchmark}`,
+    };
+
+    const benchTokens: SourcedNumber = {
+      value: item.tokens,
+      unit: "tokens",
+      source: "cursor",
+      observedAt: catalog.observedAt,
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+      notes: `Measured average tokens per task on ${catalog.benchmark}`,
+    };
+
+    const benchSteps: SourcedNumber = {
+      value: item.steps,
+      unit: "steps",
+      source: "cursor",
+      observedAt: catalog.observedAt,
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+    };
+
+    const metrics = { ...v.metrics };
+    metrics.cursorBench = benchScore;
+    metrics.cursorBenchCostUsd = benchCost;
+    metrics.cursorBenchTokens = benchTokens;
+    metrics.cursorBenchSteps = benchSteps;
+
+    // Use measured CursorBench cost if taskCostUsd is missing or not measured
+    if (!metrics.taskCostUsd || metrics.taskCostUsd.status !== "measured") {
+      metrics.taskCostUsd = benchCost;
+    }
+
+    // Use measured CursorBench tokens if taskTokens is missing or not measured
+    if (!metrics.taskTokens || metrics.taskTokens.status !== "measured") {
+      metrics.taskTokens = benchTokens;
+    }
+
+    // If coding is missing or not measured, anchor with CursorBench measured score
+    if (!metrics.coding || metrics.coding.status !== "measured") {
+      metrics.coding = {
+        value: item.score,
+        unit: "index_0_100",
+        source: "cursor",
+        observedAt: catalog.observedAt,
+        confidence: 0.95,
+        status: "measured",
+        method: "cursorbench_3_2",
+        notes: `Benchmarked via ${catalog.benchmark}`,
+      };
+    }
+
+    const hasBenchProvenance = v.provenance.some(
+      (p) => p.pathOrUrl === catalog.url || p.version === catalog.benchmark,
+    );
+    const provenance = hasBenchProvenance
+      ? v.provenance
+      : [
+          ...v.provenance,
+          {
+            source: "cursor" as const,
+            pathOrUrl: catalog.url,
+            pulledAt: catalog.observedAt,
+            version: catalog.benchmark,
+          },
+        ];
+
+    return {
+      ...v,
+      metrics,
+      provenance,
+      evidenceCoverage: Math.max(v.evidenceCoverage, 0.6),
+    };
+  });
 }
 
 /** Simple CSV parser for Cursor export (handles quoted fields). */

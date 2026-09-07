@@ -1,0 +1,110 @@
+---
+interface Props {
+  current?: "home" | "methodology" | "none";
+  compact?: boolean;
+}
+
+const { current = "home", compact = false } = Astro.props;
+const navClass = (id: string) =>
+  current === id
+    ? "rounded-xl bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground"
+    : "rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground";
+---
+
+<header class="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-md">
+  <div class:list={["mx-auto flex items-center gap-3 px-4 py-3.5 sm:py-4", compact ? "max-w-3xl" : "max-w-[1500px]"]}>
+    <a href="/" class="group flex items-center gap-2.5 no-underline" aria-label="effiq home">
+      <span
+        class="flex size-9 items-center justify-center rounded-xl bg-primary text-sm font-bold tracking-tight text-primary-foreground shadow-sm"
+        aria-hidden="true"
+      >
+        eq
+      </span>
+      <span class="flex flex-col leading-none">
+        <span class="text-lg font-bold tracking-tight text-foreground">effiq</span>
+        <span class="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          efficiency × iq
+        </span>
+      </span>
+    </a>
+    <nav class="ml-1 flex items-center gap-1 sm:ml-3 sm:gap-1.5" aria-label="Primary">
+      <a href="/" class={navClass("home")} aria-current={current === "home" ? "page" : undefined}>
+        Explorer
+      </a>
+      <a
+        href="/methodology/"
+        class={navClass("methodology")}
+        aria-current={current === "methodology" ? "page" : undefined}
+      >
+        Methodology
+      </a>
+      <a
+        href="/api/models.json"
+        class="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
+      >
+        Matrix JSON
+      </a>
+    </nav>
+    <div class="ml-auto flex items-center gap-3">
+      {!compact && (
+        <p class="hidden max-w-md truncate text-sm text-muted-foreground lg:block">
+          Capability per task dollar · OpenRouter &amp; Cursor
+        </p>
+      )}
+      <button
+        type="button"
+        id="theme-toggle"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-foreground shadow-xs transition-colors hover:bg-muted"
+        title="Toggle color theme"
+        aria-label="Toggle color theme"
+      >
+        <svg
+          class="theme-icon-sun size-4 text-amber-400"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>
+        </svg>
+        <svg
+          class="theme-icon-moon size-4 text-slate-700 hidden"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+        >
+          <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<script is:inline>
+  (function () {
+    var btn = document.getElementById("theme-toggle");
+    if (!btn) return;
+    function syncIcons() {
+      var dark = document.documentElement.classList.contains("dark");
+      var sun = btn.querySelector(".theme-icon-sun");
+      var moon = btn.querySelector(".theme-icon-moon");
+      if (sun && moon) {
+        sun.classList.toggle("hidden", !dark);
+        moon.classList.toggle("hidden", dark);
+      }
+      btn.setAttribute("title", dark ? "Switch to light mode" : "Switch to dark mode");
+    }
+    syncIcons();
+    btn.addEventListener("click", function () {
+      var next = document.documentElement.classList.contains("dark") ? "light" : "dark";
+      if (next === "dark") document.documentElement.classList.add("dark");
+      else document.documentElement.classList.remove("dark");
+      try { localStorage.setItem("theme", next); } catch (e) {}
+      syncIcons();
+    });
+  })();
+</script>

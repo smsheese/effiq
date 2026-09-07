@@ -1,7 +1,7 @@
 {
   "name": "effiq",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "effiq — rank LLM reasoning variants by capability per task dollar",
   "engines": {
     "node": ">=22.12.0"
@@ -12,6 +12,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "sync": "tsx scripts/sync.ts",
+    "sync:cursor": "python3 scripts/cursor_pricing_pyagent.py",
     "test": "vitest run",
     "check": "astro check"
   },

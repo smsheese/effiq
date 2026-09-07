@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Test, check, and build
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: https://effiq.pages.dev
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Astro type check
+        run: npm run check
+
+      - name: Production build
+        run: npm run build
+
+      - name: Audit production artifacts
+        run: |
+          set -euo pipefail
+          # No production source maps
+          if find dist -type f -name '*.map' | grep -q .; then
+            echo "Source maps found in dist/" >&2
+            find dist -type f -name '*.map' >&2
+            exit 1
+          fi
+          # No placeholder domains in HTML/txt/xml discovery surfaces
+          if grep -RInE 'models\.example\.com' dist --include='*.html' --include='*.txt' --include='*.xml'; then
+            echo "Placeholder example.com URLs found in dist/" >&2
+            exit 1
+          fi
+          # Tab title / branding must not ship Vite or React defaults
+          if grep -RInE '<title>[^<]*(Vite|React)[^<]*</title>' dist --include='*.html'; then
+            echo "Default Vite/React document title found" >&2
+            exit 1
+          fi
+          # Required discovery endpoints
+          test -f dist/robots.txt
+          test -f dist/sitemap.xml
+          test -f dist/llms.txt
+          test -f dist/404.html
+          test -f dist/_headers
+          test -f dist/favicon.svg
+          test -f dist/og.png
+          test -f dist/og-methodology.png
+          echo "Artifact checks passed."
+
+      - name: npm audit (high+)
+        run: npm audit --audit-level=high
+        continue-on-error: true

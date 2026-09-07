@@ -22,6 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   DEFAULT_EFFICIENCY_WEIGHTS,
   USAGE_PROFILES,
   WEIGHT_PRESETS,
@@ -35,6 +41,7 @@ import {
 } from "@/lib/scoring";
 import type {
   MetricWeights,
+  ModelVariant,
   ModelsMatrix,
   ScoredVariant,
   UsageProfileId,
@@ -42,12 +49,48 @@ import type {
 import {
   ChevronDown,
   ChevronUp,
+  CircleHelp,
   Download,
   RefreshCw,
   Search,
   SlidersHorizontal,
 } from "lucide-react";
-import { ParetoScatter } from "@/components/ParetoScatter";
+import { getModelParent } from "@/lib/parents";
+
+const ParetoScatter = React.lazy(() =>
+  import("@/components/ParetoScatter").then((m) => ({ default: m.ParetoScatter })),
+);
+const OpenRouterModelFacts = React.lazy(() =>
+  import("@/components/OpenRouterModelFacts").then((m) => ({ default: m.OpenRouterModelFacts })),
+);
+const CursorModelFacts = React.lazy(() =>
+  import("@/components/CursorModelFacts").then((m) => ({ default: m.CursorModelFacts })),
+);
+const OpenCodeGoModelFacts = React.lazy(() =>
+  import("@/components/OpenCodeGoModelFacts").then((m) => ({ default: m.OpenCodeGoModelFacts })),
+);
+
+type ProviderChannel = "all" | "openrouter" | "cursor" | "opencode";
+
+const isCursorVariant = (v: ModelVariant) =>
+  Boolean(
+    v.ids.cursorModelId ||
+    v.ids.cursorTaskSlug ||
+    v.offers.some((o) => o.channel === "cursor"),
+  );
+
+const isOpenRouterVariant = (v: ModelVariant) =>
+  Boolean(
+    v.ids.openrouterSlug ||
+    v.ids.openrouterPermaslug ||
+    v.offers.some((o) => o.channel === "openrouter"),
+  );
+
+const isOpencodeVariant = (v: ModelVariant) =>
+  Boolean(
+    v.offers.some((o) => o.channel === "opencode") ||
+    v.provenance.some((p) => p.source === "opencode"),
+  );
 
 type SortKey =
   | "efficiency"
@@ -57,17 +100,42 @@ type SortKey =
   | "intelligence"
   | "coding"
   | "agentic"
+  | "cursorBench"
   | "taskCost"
+  | "taskTokens"
+  | "taskTime"
   | "throughput"
   | "latency"
+  | "inputCost"
+  | "outputCost"
+  | "cacheReadCost"
   | "name";
 
 const STORAGE_KEY = "effiq-v1";
 
+function fmtTokens(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 10000) return `${Math.round(n / 1e3)}k`;
+  if (n >= 1000) return `${(n / 1e3).toFixed(1)}k`;
+  return String(Math.round(n));
+}
+
+function fmtPricePerM(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (n === 0) return "$0";
+  if (n < 0.001) return `$${n.toFixed(4)}`;
+  if (n < 0.1) return `$${n.toFixed(3)}`;
+  if (n >= 100) return `$${Math.round(n)}`;
+  return `$${n.toFixed(2)}`;
+}
+
 function fmtMoney(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
   if (n === 0) return "$0";
-  if (n < 0.001) return `$${n.toExponential(1)}`;
+  if (n < 0.0001) return `$${n.toFixed(6).replace(/0+$/, "")}`;
+  if (n < 0.001) return `$${n.toFixed(5).replace(/0+$/, "")}`;
+  if (n < 0.01) return `$${n.toFixed(4).replace(/0+$/, "")}`;
   if (n < 1) return `$${n.toFixed(3)}`;
   return `$${n.toFixed(2)}`;
 }
@@ -110,6 +178,66 @@ function ScoreBar({ value, max = 100 }: { value: number | null; max?: number }) 
   );
 }
 
+const METRIC_HELP: Record<keyof MetricWeights, { label: string; help: string }> = {
+  intelligence: {
+    label: "Intelligence",
+    help: "This slider sets how much general reasoning changes rank. The source is the Artificial Analysis Intelligence Index.",
+  },
+  coding: {
+    label: "Coding",
+    help: "This slider sets how much coding skill changes rank. Sources include SWE-bench, HumanEval, and CursorBench.",
+  },
+  agentic: {
+    label: "Agentic",
+    help: "This slider sets how much multi-step tool use and agent benchmarks change rank.",
+  },
+  task_cost: {
+    label: "Task cost",
+    help: "This slider sets how much a lower task dollar cost raises rank. A higher weight favors cheaper variants.",
+  },
+  latency: {
+    label: "Latency",
+    help: "This slider sets how much faster first-token and round-trip time raises rank.",
+  },
+  throughput: {
+    label: "Throughput",
+    help: "This slider sets how much output tokens per second raises rank.",
+  },
+};
+
+function ControlTitleHelp({
+  title,
+  help,
+  badge,
+  className = "",
+}: {
+  title: React.ReactNode;
+  help: string;
+  badge?: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`mb-2 flex items-center justify-between ${className}`}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex cursor-help items-center gap-1.5 border-b border-dotted border-muted-foreground/50 pb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
+            <span>{title}</span>
+            <CircleHelp className="size-3 text-muted-foreground/70" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+          {help}
+        </TooltipContent>
+      </Tooltip>
+      {badge !== undefined && (
+        <span className="font-mono text-xs font-medium tabular-nums text-foreground">
+          {badge}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ModelExplorer() {
   const [matrix, setMatrix] = React.useState<ModelsMatrix | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -124,6 +252,7 @@ export function ModelExplorer() {
   const [conservative, setConservative] = React.useState(true);
   const [effortFilter, setEffortFilter] = React.useState<string>("all");
   const [providerFilter, setProviderFilter] = React.useState<string>("all");
+  const [channelFilter, setChannelFilter] = React.useState<ProviderChannel>("all");
   const [sortKey, setSortKey] = React.useState<SortKey>("efficiency");
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [selected, setSelected] = React.useState<string[]>([]);
@@ -137,6 +266,8 @@ export function ModelExplorer() {
       if (profile && USAGE_PROFILES.some((p) => p.id === profile)) setProfileId(profile);
       const floor = params.get("intel");
       if (floor != null) setIntelFloor(Number(floor));
+      const ch = params.get("channel") as ProviderChannel | null;
+      if (ch === "all" || ch === "openrouter" || ch === "cursor" || ch === "opencode") setChannelFilter(ch);
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as {
@@ -161,8 +292,10 @@ export function ModelExplorer() {
     const params = new URLSearchParams(window.location.search);
     params.set("profile", profileId);
     params.set("intel", String(intelFloor));
+    if (channelFilter !== "all") params.set("channel", channelFilter);
+    else params.delete("channel");
     window.history.replaceState(null, "", `?${params.toString()}`);
-  }, [weights, profileId, intelFloor]);
+  }, [weights, profileId, intelFloor, channelFilter]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -196,8 +329,9 @@ export function ModelExplorer() {
       includeApproximations: includeApprox,
       minConfidence,
       conservativeRanking: conservative,
+      channel: channelFilter,
     }),
-    [profileId, weights, intelFloor, includeApprox, minConfidence, conservative],
+    [profileId, weights, intelFloor, includeApprox, minConfidence, conservative, channelFilter],
   );
 
   const scored = React.useMemo(() => {
@@ -211,18 +345,36 @@ export function ModelExplorer() {
     return [...set].sort();
   }, [scored]);
 
+  const cursorCount = React.useMemo(
+    () => scored.filter((s) => isCursorVariant(s.variant)).length,
+    [scored],
+  );
+
+  const openRouterCount = React.useMemo(
+    () => scored.filter((s) => isOpenRouterVariant(s.variant)).length,
+    [scored],
+  );
+
+  const opencodeCount = React.useMemo(
+    () => scored.filter((s) => isOpencodeVariant(s.variant)).length,
+    [scored],
+  );
+
   const filtered = React.useMemo(() => {
     const qq = q.trim().toLowerCase();
     return scored.filter((s) => {
       if (qq) {
-        const hay = `${s.variant.displayName} ${s.variant.familySlug} ${s.variant.provider} ${s.variant.ids.openrouterSlug ?? ""}`.toLowerCase();
+        const hay = `${s.variant.displayName} ${s.variant.familySlug} ${s.variant.provider} ${s.variant.ids.openrouterSlug ?? ""} ${s.variant.ids.cursorTaskSlug ?? ""} ${s.variant.ids.cursorModelId ?? ""} ${s.variant.offers.map((o) => o.variant ?? "").join(" ")}`.toLowerCase();
         if (!hay.includes(qq)) return false;
       }
+      if (channelFilter === "cursor" && !isCursorVariant(s.variant)) return false;
+      if (channelFilter === "openrouter" && !isOpenRouterVariant(s.variant)) return false;
+      if (channelFilter === "opencode" && !isOpencodeVariant(s.variant)) return false;
       if (effortFilter !== "all" && s.variant.effort !== effortFilter) return false;
       if (providerFilter !== "all" && s.variant.provider !== providerFilter) return false;
       return true;
     });
-  }, [scored, q, effortFilter, providerFilter]);
+  }, [scored, q, channelFilter, effortFilter, providerFilter]);
 
   const sorted = React.useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -242,12 +394,24 @@ export function ModelExplorer() {
           return s.variant.metrics.coding?.value ?? null;
         case "agentic":
           return s.variant.metrics.agentic?.value ?? null;
+        case "cursorBench":
+          return s.variant.metrics.cursorBench?.value ?? null;
         case "taskCost":
           return s.effectiveTaskCostUsd;
+        case "taskTokens":
+          return s.variant.metrics.taskTokens?.value ?? null;
+        case "taskTime":
+          return s.variant.metrics.taskTimeSeconds?.value ?? null;
         case "throughput":
           return s.variant.metrics.throughputTps?.value ?? null;
         case "latency":
           return s.variant.metrics.latencyMs?.value ?? (s.variant.metrics.ttftSeconds?.value != null ? s.variant.metrics.ttftSeconds.value * 1000 : null);
+        case "inputCost":
+          return s.variant.metrics.inputUsdPerMillion?.value ?? null;
+        case "outputCost":
+          return s.variant.metrics.outputUsdPerMillion?.value ?? null;
+        case "cacheReadCost":
+          return s.variant.metrics.cacheReadUsdPerMillion?.value ?? null;
         case "name":
           return s.variant.displayName;
       }
@@ -266,7 +430,9 @@ export function ModelExplorer() {
   }, [filtered, sortKey, sortDir]);
 
   const leaders = React.useMemo(() => {
-    const bestEff = sorted[0];
+    const bestEff = [...sorted]
+      .filter((s) => s.efficiencyScore != null)
+      .sort((a, b) => (b.efficiencyScore ?? 0) - (a.efficiencyScore ?? 0))[0];
     const cheapest = [...sorted]
       .filter((s) => s.effectiveTaskCostUsd != null)
       .sort((a, b) => (a.effectiveTaskCostUsd ?? Infinity) - (b.effectiveTaskCostUsd ?? Infinity))[0];
@@ -283,7 +449,18 @@ export function ModelExplorer() {
     if (sortKey === key) setSortDir(sortDir === "desc" ? "asc" : "desc");
     else {
       setSortKey(key);
-      setSortDir(key === "taskCost" || key === "latency" || key === "name" ? "asc" : "desc");
+      setSortDir(
+        key === "taskCost" ||
+        key === "taskTime" ||
+        key === "taskTokens" ||
+        key === "latency" ||
+        key === "inputCost" ||
+        key === "outputCost" ||
+        key === "cacheReadCost" ||
+        key === "name"
+          ? "asc"
+          : "desc",
+      );
     }
   };
 
@@ -299,16 +476,21 @@ export function ModelExplorer() {
     const blob = new Blob([JSON.stringify(sorted.map((s) => ({
       rank: sorted.indexOf(s) + 1,
       name: s.variant.displayName,
-      efficiency: s.efficiencyScore,
+      effiqScore: s.efficiencyScore,
       domain: s.domainScore,
       taskCost: s.effectiveTaskCostUsd,
+      taskTokens: s.variant.metrics.taskTokens?.value ?? null,
+      taskTimeSeconds: s.variant.metrics.taskTimeSeconds?.value ?? null,
+      inputUsdPerMillion: s.variant.metrics.inputUsdPerMillion?.value ?? null,
+      outputUsdPerMillion: s.variant.metrics.outputUsdPerMillion?.value ?? null,
+      cacheReadUsdPerMillion: s.variant.metrics.cacheReadUsdPerMillion?.value ?? null,
       intelligence: s.intelligenceForGate,
       profile: profileId,
     })), null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `efficiency-${profileId}.json`;
+    a.download = `effiq-${profileId}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -321,30 +503,37 @@ export function ModelExplorer() {
   const compareRows = sorted.filter((s) => selected.includes(s.variant.canonicalId));
 
   const columns: Array<{ key: SortKey; label: string }> = [
-    { key: "efficiency", label: "Eff. score" },
+    { key: "efficiency", label: "Effiq Score" },
     { key: "domainEfficiency", label: "Domain eff." },
     { key: "domain", label: "Domain" },
     { key: "intelligence", label: "Intel" },
     { key: "coding", label: "Coding" },
     { key: "agentic", label: "Agentic" },
+    { key: "cursorBench", label: "CursorBench" },
     { key: "taskCost", label: "Task $" },
+    { key: "taskTokens", label: "Tokens/task" },
+    { key: "taskTime", label: "Task time" },
     { key: "throughput", label: "TPS" },
     { key: "latency", label: "Latency" },
+    { key: "inputCost", label: "In $/1M" },
+    { key: "outputCost", label: "Out $/1M" },
+    { key: "cacheReadCost", label: "Cache $/1M" },
     { key: "capabilityPerDollar", label: "Cap/$" },
   ];
 
   return (
-    <div className="mx-auto max-w-[1500px] px-4 py-6">
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <TooltipProvider delayDuration={150}>
+      <div className="mx-auto max-w-[1500px] space-y-8 px-4 pb-10 pt-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Best efficiency", row: leaders.bestEff, fmt: (s: ScoredVariant) => fmtNum(s.efficiencyScore) },
+          { label: "Highest Effiq Score", row: leaders.bestEff, fmt: (s: ScoredVariant) => fmtNum(s.efficiencyScore) },
           { label: "Lowest task cost", row: leaders.cheapest, fmt: (s: ScoredVariant) => fmtMoney(s.effectiveTaskCostUsd) },
           { label: "Highest intelligence", row: leaders.smartest, fmt: (s: ScoredVariant) => fmtNum(s.intelligenceForGate) },
           { label: "Fastest output", row: leaders.fastest, fmt: (s: ScoredVariant) => s.variant.metrics.throughputTps?.value != null ? `${Math.round(s.variant.metrics.throughputTps.value)} t/s` : "—" },
         ].map((card) => (
-          <div key={card.label} className="rounded-xl border bg-card p-4 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{card.label}</div>
-            <div className="mt-1 truncate font-semibold">{card.row?.variant.displayName ?? "—"}</div>
+          <div key={card.label} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{card.label}</div>
+            <div className="mt-2 truncate text-base font-semibold text-foreground">{card.row?.variant.displayName ?? "—"}</div>
             <div className="mt-1 font-mono text-sm tabular-nums text-primary">
               {card.row ? card.fmt(card.row) : "—"}
             </div>
@@ -352,8 +541,13 @@ export function ModelExplorer() {
         ))}
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profile</span>
+      <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <ControlTitleHelp
+          title="Profile"
+          help="This control selects a usage profile. The profile sets default weights and the token workload for task cost."
+          className="mb-0 mr-1"
+        />
         {USAGE_PROFILES.map((p) => (
           <Button
             key={p.id}
@@ -365,14 +559,74 @@ export function ModelExplorer() {
           </Button>
         ))}
       </div>
-      <p className="mb-4 max-w-3xl text-sm text-muted-foreground">
-        {profile.description} Workload: <span className="text-foreground">{profile.workload.label}</span>.
+      <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        {profile.description} Workload: <span className="font-medium text-foreground">{profile.workload.label}</span>.
       </p>
+      </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button variant={showControls ? "secondary" : "outline"} size="sm" onClick={() => setShowControls(!showControls)}>
-          <SlidersHorizontal /> Ranking controls
-        </Button>
+      <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <ControlTitleHelp
+          title="Provider channel"
+          help="This control shows OpenRouter variants, Cursor variants, OpenCode Go variants, or all three. The Cursor view raises CursorBench weight."
+          className="mb-0 mr-1"
+        />
+        <div className="inline-flex rounded-xl border border-border bg-muted/50 p-1 gap-1">
+          <Button
+            size="sm"
+            variant={channelFilter === "all" ? "default" : "outline"}
+            onClick={() => setChannelFilter("all")}
+            className="h-8 text-xs font-medium"
+          >
+            All Providers ({scored.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "openrouter" ? "default" : "outline"}
+            onClick={() => setChannelFilter("openrouter")}
+            className="h-8 text-xs font-medium"
+          >
+            OpenRouter ({openRouterCount})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "cursor" ? "default" : "outline"}
+            onClick={() => setChannelFilter("cursor")}
+            className="h-8 text-xs font-medium"
+          >
+            Cursor Models Only ({cursorCount})
+          </Button>
+          <Button
+            size="sm"
+            variant={channelFilter === "opencode" ? "default" : "outline"}
+            onClick={() => setChannelFilter("opencode")}
+            className="h-8 text-xs font-medium"
+          >
+            OpenCode Go ({opencodeCount})
+          </Button>
+        </div>
+        {channelFilter === "cursor" && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+            <span className="font-semibold text-primary">Cursor section active:</span>
+            <span>
+              CursorBench scores use 2.5× weight in domain capability. Measured CursorBench task cost is preferred for Cursor models.
+            </span>
+          </div>
+        )}
+      </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant={showControls ? "secondary" : "outline"} size="sm" onClick={() => setShowControls(!showControls)}>
+              <SlidersHorizontal /> Ranking controls
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+            This button shows or hides ranking controls. The controls change the floor, weights, and filters.
+          </TooltipContent>
+        </Tooltip>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={loading ? "animate-spin" : ""} /> Refresh
         </Button>
@@ -391,18 +645,31 @@ export function ModelExplorer() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Failed to load matrix: {error}
         </div>
       )}
 
       {showControls && (
-        <div className="mb-5 space-y-4 rounded-xl border bg-card p-4">
+        <div className="space-y-6 rounded-2xl border border-border bg-card p-5 shadow-xs sm:p-6">
+          <div className="flex items-center justify-between border-b border-border/60 pb-4">
+            <ControlTitleHelp
+              title="Ranking controls"
+              help="These controls change which variants appear and how the Effiq Score weights them."
+              className="mb-0"
+            />
+            <div className="text-xs text-muted-foreground">
+              Hover a control title to read the term.
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Min intelligence ({intelFloor})
-              </label>
+              <ControlTitleHelp
+                title="Min intelligence"
+                badge={intelFloor}
+                help="This slider hides variants whose Artificial Analysis Intelligence Index is less than the set floor."
+              />
               <Slider
                 min={0}
                 max={70}
@@ -412,9 +679,11 @@ export function ModelExplorer() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Min confidence ({minConfidence.toFixed(2)})
-              </label>
+              <ControlTitleHelp
+                title="Min confidence"
+                badge={minConfidence.toFixed(2)}
+                help="This slider hides variants whose data confidence is less than the set floor. The range is 0.0 to 1.0."
+              />
               <Slider
                 min={0}
                 max={1}
@@ -423,16 +692,41 @@ export function ModelExplorer() {
                 onValueChange={([v]) => setMinConfidence(v)}
               />
             </div>
-            <div className="flex flex-col gap-2 justify-end">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={includeApprox} onCheckedChange={setIncludeApprox} /> Include approximations
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch checked={conservative} onCheckedChange={setConservative} /> Conservative ranking bounds
-              </label>
+            <div className="flex flex-col justify-end gap-2.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex cursor-help items-center gap-2 text-sm text-foreground">
+                    <Switch checked={includeApprox} onCheckedChange={setIncludeApprox} />
+                    <span className="border-b border-dotted border-muted-foreground/60 text-xs font-medium">
+                      Include approximations
+                    </span>
+                    <CircleHelp className="size-3 text-muted-foreground/70" />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                  When this switch is on, the table includes variants that use interpolated or family estimates.
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex cursor-help items-center gap-2 text-sm text-foreground">
+                    <Switch checked={conservative} onCheckedChange={setConservative} />
+                    <span className="border-b border-dotted border-muted-foreground/60 text-xs font-medium">
+                      Conservative bounds
+                    </span>
+                    <CircleHelp className="size-3 text-muted-foreground/70" />
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                  When this switch is on, estimates use the worse bound. Cost is higher. Capability is lower.
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weight presets</label>
+              <ControlTitleHelp
+                title="Weight presets"
+                help="These buttons apply ready weight mixes for coding, speed, or budget ranking."
+              />
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(WEIGHT_PRESETS).map(([k, p]) => (
                   <Button key={k} size="xs" variant="outline" onClick={() => setWeights(normalizeWeights(p.weights))}>
@@ -443,71 +737,119 @@ export function ModelExplorer() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(Object.keys(weights) as (keyof MetricWeights)[]).map((key) => (
-              <div key={key}>
-                <div className="mb-1 flex justify-between text-xs">
-                  <span className="font-medium capitalize">{key.replace("_", " ")}</span>
-                  <span className="tabular-nums text-muted-foreground">{weights[key].toFixed(0)}%</span>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 border-t border-border/40 pt-4">
+            {(Object.keys(weights) as (keyof MetricWeights)[]).map((key) => {
+              const meta = METRIC_HELP[key] ?? {
+                label: key.replace("_", " "),
+                help: `This slider sets how much ${key.replace("_", " ")} changes rank.`,
+              };
+              return (
+                <div key={key} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-help items-center gap-1 border-b border-dotted border-muted-foreground/50 pb-0.5 font-medium text-foreground transition-colors hover:border-foreground">
+                          <span>{meta.label}</span>
+                          <CircleHelp className="size-3 text-muted-foreground/70" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-xs font-normal">
+                        {meta.help}
+                      </TooltipContent>
+                    </Tooltip>
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {weights[key].toFixed(0)}%
+                    </span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[weights[key]]}
+                    onValueChange={([v]) => setWeight(key, v)}
+                  />
                 </div>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[weights[key]]}
-                  onValueChange={([v]) => setWeight(key, v)}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="relative">
-              <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input className="h-8 pl-7" placeholder="Search models…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 border-t border-border/40 pt-4">
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Search"
+                help="This box filters rows by name, organization, family, or task slug."
+              />
+              <div className="relative">
+                <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="h-8 pl-7 text-xs"
+                  placeholder="Search models…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                />
+              </div>
             </div>
-            <Select value={effortFilter} onValueChange={setEffortFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Effort" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All efforts</SelectItem>
-                {["none", "minimal", "low", "medium", "high", "xhigh", "max"].map((e) => (
-                  <SelectItem key={e} value={e}>{e}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={providerFilter} onValueChange={setProviderFilter}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Provider" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All providers</SelectItem>
-                {providers.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {columns.map((c) => (
-                  <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                ))}
-                <SelectItem value="name">Name</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Effort"
+                help="This list filters variants by reasoning effort. Values include none, low, medium, high, xhigh, and max."
+              />
+              <Select value={effortFilter} onValueChange={setEffortFilter}>
+                <SelectTrigger className="w-full h-8 text-xs"><SelectValue placeholder="Effort" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All efforts</SelectItem>
+                  {["none", "minimal", "low", "medium", "high", "xhigh", "max"].map((e) => (
+                    <SelectItem key={e} value={e}>{e}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Provider filter"
+                help="This list filters variants by inference provider or host."
+              />
+              <Select value={providerFilter} onValueChange={setProviderFilter}>
+                <SelectTrigger className="w-full h-8 text-xs"><SelectValue placeholder="Provider" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All providers</SelectItem>
+                  {providers.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <ControlTitleHelp
+                title="Sort by"
+                help="This list sets the column that sorts the table."
+              />
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+                <SelectTrigger className="w-full h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {columns.map((c) => (
+                    <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                  ))}
+                  <SelectItem value="name">Name</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       )}
 
       {compareRows.length > 0 && (
-        <div className="mb-5 overflow-x-auto rounded-xl border bg-card p-4">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card p-5 shadow-xs">
           <div className="mb-2 text-sm font-semibold">Compare ({compareRows.length}/3)</div>
           <div className="grid gap-3 md:grid-cols-3">
             {compareRows.map((s) => (
               <div key={s.variant.canonicalId} className="rounded-lg border p-3 text-sm">
                 <div className="font-medium">{s.variant.displayName}</div>
                 <div className="mt-2 space-y-1 font-mono text-xs tabular-nums text-muted-foreground">
-                  <div>Eff {fmtNum(s.efficiencyScore)} · Domain {fmtNum(s.domainScore)}</div>
-                  <div>Task {fmtMoney(s.effectiveTaskCostUsd)} · Intel {fmtNum(s.intelligenceForGate)}</div>
-                  <div>Coding {fmtNum(s.variant.metrics.coding?.value)} · Agentic {fmtNum(s.variant.metrics.agentic?.value)}</div>
+                  <div>Effiq Score {fmtNum(s.efficiencyScore)} · Domain {fmtNum(s.domainScore)}</div>
+                  <div>Task {fmtMoney(s.effectiveTaskCostUsd)} · Tokens {s.variant.metrics.taskTokens?.value != null ? fmtTokens(s.variant.metrics.taskTokens.value) : "—"} · Time {s.variant.metrics.taskTimeSeconds?.value != null ? `${s.variant.metrics.taskTimeSeconds.value.toFixed(1)}s` : "—"}</div>
+                  <div>In {fmtPricePerM(s.variant.metrics.inputUsdPerMillion?.value)} · Out {fmtPricePerM(s.variant.metrics.outputUsdPerMillion?.value)}</div>
+                  <div>Intel {fmtNum(s.intelligenceForGate)} · Coding {fmtNum(s.variant.metrics.coding?.value)}</div>
                 </div>
               </div>
             ))}
@@ -515,12 +857,101 @@ export function ModelExplorer() {
         </div>
       )}
 
-      <div className="mb-5 grid gap-3 lg:grid-cols-2">
-        <ParetoScatter rows={sorted} xKey="taskCost" yKey="domain" title="Capability vs task cost" />
-        <ParetoScatter rows={sorted} xKey="latency" yKey="throughput" title="Throughput vs latency" />
+      <div className="space-y-6">
+        <React.Suspense
+          fallback={
+            <div className="rounded-2xl border border-border bg-card p-8 text-sm text-muted-foreground">
+              Loading Effiq charts…
+            </div>
+          }
+        >
+          <ParetoScatter
+            rows={sorted}
+            xKey="effiq"
+            yKey="taskCost"
+            title="Task cost vs Effiq Score"
+          />
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ParetoScatter
+              rows={sorted}
+              xKey="taskCost"
+              yKey="domain"
+              size="compact"
+              title={
+                channelFilter === "cursor"
+                  ? "Capability vs task cost (CursorBench weighted)"
+                  : "Capability vs task cost"
+              }
+            />
+            <ParetoScatter
+              rows={sorted}
+              xKey="throughput"
+              yKey="latency"
+              size="compact"
+              title="Latency vs throughput"
+            />
+          </div>
+        </React.Suspense>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Provider</span>
+          <div className="inline-flex rounded-xl border border-border bg-muted/40 p-1 gap-1">
+            <button
+              type="button"
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                channelFilter === "all"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setChannelFilter("all")}
+            >
+              All Models
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                channelFilter === "openrouter"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setChannelFilter("openrouter")}
+            >
+              OpenRouter
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                channelFilter === "cursor"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setChannelFilter("cursor")}
+            >
+              Cursor Only ({cursorCount})
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                channelFilter === "opencode"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => setChannelFilter("opencode")}
+            >
+              OpenCode Go ({opencodeCount})
+            </button>
+          </div>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Showing <span className="font-semibold text-foreground">{sorted.length}</span> ranked models
+          {channelFilter === "cursor" ? " with Cursor published plans" : ""}
+          {channelFilter === "opencode" ? " with OpenCode Go published prices" : ""}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-xs">
         <Table>
           <TableHeader>
             <TableRow>
@@ -539,13 +970,13 @@ export function ModelExplorer() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={12} className="py-16 text-center text-muted-foreground">Loading efficiency matrix…</TableCell>
+                <TableCell colSpan={18} className="py-16 text-center text-muted-foreground">Loading Effiq rankings…</TableCell>
               </TableRow>
             )}
             {!loading && sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={12} className="py-16 text-center text-muted-foreground">
-                  No variants match. Try lowering the intelligence floor or including approximations.
+                <TableCell colSpan={18} className="py-16 text-center text-muted-foreground">
+                  No variants match the current filters. Lower the intelligence floor or include approximations to view more models.
                 </TableCell>
               </TableRow>
             )}
@@ -553,6 +984,7 @@ export function ModelExplorer() {
               sorted.slice(0, 250).map((s, i) => {
                 const v = s.variant;
                 const open = expanded === v.canonicalId;
+                const parent = getModelParent(v);
                 const lat =
                   v.metrics.latencyMs?.value ??
                   (v.metrics.ttftSeconds?.value != null ? v.metrics.ttftSeconds.value * 1000 : null);
@@ -576,16 +1008,48 @@ export function ModelExplorer() {
                           >
                             {selected.includes(v.canonicalId) ? "Selected" : "Compare"}
                           </button>
+                          <span
+                            className="size-2 rounded-full inline-block shrink-0"
+                            style={{ backgroundColor: parent.color }}
+                            title={`Parent: ${parent.label}`}
+                          />
                           <span className="font-medium">{v.displayName}</span>
                           <Badge variant="outline" className="text-[10px]">{v.effort}</Badge>
                           {v.fast && <Badge variant="secondary" className="text-[10px]">fast</Badge>}
+                          {isCursorVariant(v) && (
+                            <Badge variant="secondary" className="border-primary/40 text-primary text-[10px]">
+                              Cursor
+                            </Badge>
+                          )}
+                          {isOpencodeVariant(v) && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              OpenCode Go
+                            </Badge>
+                          )}
                           {statusBadge(v.metrics.intelligence?.status)}
                         </div>
-                        <div className="font-mono text-[11px] text-muted-foreground">
-                          {v.provider}
-                          {v.ids.openrouterSlug ? ` · ${v.ids.openrouterSlug}` : ""}
-                          {v.offers.length ? ` · ${v.offers.length} offers` : ""}
-                        </div>
+                        {channelFilter === "cursor" ? (
+                          <div className="font-mono text-[11px] text-foreground">
+                            <span className="font-semibold text-primary">Cursor:</span>{" "}
+                            <span>{v.ids.cursorTaskSlug || v.ids.cursorModelId}</span>
+                            {(() => {
+                              const co = v.offers.find((o) => o.channel === "cursor");
+                              if (!co) return null;
+                              return (
+                                <span className="text-muted-foreground ml-1.5">
+                                  · in ${co.inputUsdPerMillion?.toFixed(2) ?? "—"} / out ${co.outputUsdPerMillion?.toFixed(2) ?? "—"}
+                                  {co.cacheReadUsdPerMillion != null ? ` · cache $${co.cacheReadUsdPerMillion.toFixed(2)}` : ""}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="font-mono text-[11px] text-muted-foreground">
+                            {v.provider}
+                            {v.ids.openrouterSlug ? ` · ${v.ids.openrouterSlug}` : ""}
+                            {v.offers.length ? ` · ${v.offers.length} offers` : ""}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-right"><ScoreBar value={s.efficiencyScore} /></TableCell>
                       <TableCell className="text-right"><ScoreBar value={s.domainEfficiencyScore} /></TableCell>
@@ -593,9 +1057,22 @@ export function ModelExplorer() {
                       <TableCell className="text-right"><ScoreBar value={s.intelligenceForGate} max={70} /></TableCell>
                       <TableCell className="text-right tabular-nums">{fmtNum(v.metrics.coding?.value)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmtNum(v.metrics.agentic?.value)}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {v.metrics.cursorBench?.value != null ? (
+                          <span className="font-semibold text-primary">{v.metrics.cursorBench.value.toFixed(1)}%</span>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="tabular-nums">{fmtMoney(s.effectiveTaskCostUsd)}</div>
                         <div className="flex justify-end">{statusBadge(s.taskCostStatus)}</div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {v.metrics.taskTokens?.value != null ? fmtTokens(v.metrics.taskTokens.value) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {v.metrics.taskTimeSeconds?.value != null ? `${v.metrics.taskTimeSeconds.value.toFixed(1)}s` : "—"}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {v.metrics.throughputTps?.value != null ? Math.round(v.metrics.throughputTps.value) : "—"}
@@ -603,52 +1080,65 @@ export function ModelExplorer() {
                       <TableCell className="text-right tabular-nums">
                         {lat != null ? (lat >= 1000 ? `${(lat / 1000).toFixed(1)}s` : `${Math.round(lat)}ms`) : "—"}
                       </TableCell>
+                      <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
+                        {fmtPricePerM(v.metrics.inputUsdPerMillion?.value)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-sky-600 dark:text-sky-400 font-mono text-[11px]">
+                        {fmtPricePerM(v.metrics.outputUsdPerMillion?.value)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground font-mono text-[11px]">
+                        {fmtPricePerM(v.metrics.cacheReadUsdPerMillion?.value)}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{fmtNum(s.capabilityPerDollar, 1)}</TableCell>
                     </TableRow>
                     {open && (
                       <TableRow>
-                        <TableCell colSpan={12} className="bg-muted/30 text-sm">
-                          <div className="grid gap-3 p-2 md:grid-cols-2">
-                            <div>
-                              <div className="mb-1 font-semibold">Score explanation</div>
-                              <ul className="list-inside list-disc font-mono text-xs text-muted-foreground">
+                        <TableCell colSpan={18} className="bg-muted/30 p-4 text-sm">
+                          <div className="grid gap-4 lg:grid-cols-12">
+                            <div className="lg:col-span-5 space-y-3">
+                              <div className="font-semibold text-sm">Calculation & Score Breakdown</div>
+                              <ul className="list-inside list-disc font-mono text-xs text-muted-foreground space-y-1">
                                 {s.explanation.map((e) => (
                                   <li key={e}>{e}</li>
                                 ))}
                               </ul>
-                              <div className="mt-2 text-xs text-muted-foreground">
-                                Coverage {(v.evidenceCoverage * 100).toFixed(0)}% · Match confidence {(v.matchConfidence * 100).toFixed(0)}% · Overall {(s.confidence * 100).toFixed(0)}%
+                              <div className="space-y-1.5 pt-2 text-xs text-muted-foreground">
+                                <div>
+                                  Coverage {(v.evidenceCoverage * 100).toFixed(0)}% · Match confidence {(v.matchConfidence * 100).toFixed(0)}% · Overall {(s.confidence * 100).toFixed(0)}%
+                                </div>
+                                {v.metrics.taskTokens?.value != null && (
+                                  <div className="font-mono text-foreground">
+                                    Total tokens per task: <span className="font-semibold">{v.metrics.taskTokens.value.toLocaleString()}</span> ({v.metrics.taskTokens.status})
+                                  </div>
+                                )}
+                                {v.metrics.taskTimeSeconds?.value != null && (
+                                  <div className="font-mono text-foreground">
+                                    Measured task completion time: <span className="font-semibold">{v.metrics.taskTimeSeconds.value.toFixed(2)}s</span> ({v.metrics.taskTimeSeconds.status})
+                                  </div>
+                                )}
+                                {v.metrics.tokenHeaviness && (
+                                  <div>
+                                    Token heaviness ×{v.metrics.tokenHeaviness.value.toFixed(2)} ({v.metrics.tokenHeaviness.status})
+                                  </div>
+                                )}
                               </div>
                             </div>
-                            <div>
-                              <div className="mb-1 font-semibold">Offers & pricing</div>
-                              <div className="space-y-1 text-xs">
-                                {v.offers.slice(0, 6).map((o) => (
-                                  <div key={o.id} className="flex justify-between gap-2 font-mono">
-                                    <span>{o.channel}/{o.provider}</span>
-                                    <span>
-                                      in ${o.inputUsdPerMillion?.toFixed(2) ?? "—"} / out ${o.outputUsdPerMillion?.toFixed(2) ?? "—"}
-                                    </span>
-                                  </div>
-                                ))}
-                                {!v.offers.length && <div className="text-muted-foreground">No provider offers attached.</div>}
-                              </div>
-                              {v.metrics.tokenHeaviness && (
-                                <div className="mt-2 text-xs">
-                                  Token heaviness ×{v.metrics.tokenHeaviness.value.toFixed(2)} ({v.metrics.tokenHeaviness.status})
-                                </div>
-                              )}
-                              {v.ids.openrouterSlug && (
-                                <a
-                                  className="mt-2 inline-block text-xs text-primary underline underline-offset-2"
-                                  href={`https://openrouter.ai/${v.ids.openrouterSlug}`}
-                                  target="_blank"
-                                  rel="noopener"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  Open on OpenRouter
-                                </a>
-                              )}
+                            <div className="lg:col-span-7 space-y-3">
+                              <React.Suspense
+                                fallback={
+                                  <div className="text-xs text-muted-foreground">Loading model facts…</div>
+                                }
+                              >
+                                {isCursorVariant(v) && (
+                                  <CursorModelFacts variant={v} />
+                                )}
+                                {isOpencodeVariant(v) && (
+                                  <OpenCodeGoModelFacts variant={v} />
+                                )}
+                                {(channelFilter !== "cursor" || !isCursorVariant(v) || v.ids.openrouterSlug) && (
+                                  <OpenRouterModelFacts variant={v} />
+                                )}
+                              </React.Suspense>
                             </div>
                           </div>
                         </TableCell>
@@ -661,11 +1151,14 @@ export function ModelExplorer() {
         </Table>
       </div>
 
-      <p className="mt-4 max-w-4xl text-xs leading-relaxed text-muted-foreground">
-        Default view keeps Artificial Analysis Intelligence ≥ {DEFAULT_INTELLIGENCE_FLOOR} and ranks by a transparent Efficiency Score
-        (capability vs measured/estimated task cost, latency, and throughput). Approximated reasoning variants are labeled.
-        Primary sources: Artificial Analysis, OpenRouter, Cursor. Usage profiles change domain evidence, weights, and workload cost assumptions.
+      <p className="max-w-4xl text-sm leading-relaxed text-muted-foreground">
+        The default view keeps Artificial Analysis Intelligence at {DEFAULT_INTELLIGENCE_FLOOR} or higher.
+        The table ranks models by the Effiq Score.
+        The score compares capability against task cost, latency, and throughput.
+        Approximated model variants have clear labels.
+        Primary data sources are Artificial Analysis, OpenRouter, Cursor, and OpenCode Go.
       </p>
     </div>
+    </TooltipProvider>
   );
 }

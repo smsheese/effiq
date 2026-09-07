@@ -2,13 +2,15 @@
 
 How **effiq** ingests model evidence, what auth each source needs, and how to enable it.
 
-## Active sources (v0.1.0)
+## Active sources (v0.2.0)
 
 | Source | Adapter | Auth | Enable |
 |--------|---------|------|--------|
 | **Artificial Analysis** | `src/lib/sources/artificial-analysis.ts` | Bundled `data/aa-catalog.json`, or local `AA_CATALOG_PATH`, or `ARTIFICIAL_ANALYSIS_API_KEY` for live refresh (when wired) | `data/aa-catalog.json` (bundled) or `AA_CATALOG_PATH`; run `npm run sync` |
 | **OpenRouter** | `src/lib/sources/openrouter.ts` | None for public `models/find` | Cache via `OPENROUTER_CACHE`; set `OPENROUTER_REFRESH=1` to refetch |
 | **Cursor** | `src/lib/sources/cursor.ts` | Bundled `data/cursor-models.csv`, or `CURSOR_MODELS_CSV` export; `CURSOR_API_KEY` only to regenerate CSV offline | `data/cursor-models.csv` (bundled) or `CURSOR_MODELS_CSV` |
+| **CursorBench** | `src/lib/sources/cursor.ts` | Bundled `data/cursorbench.json` from [CursorBench](https://cursor.com/cursorbench) | `data/cursorbench.json` (bundled); automatically ingested during `npm run sync` |
+| **OpenCode Go** | `src/lib/sources/opencode-go.ts` | Bundled `data/opencode-go.json` from [OpenCode Go](https://opencode.ai/docs/go/) | `data/opencode-go.json` (bundled) or `OPENCODE_GO_JSON`; automatically ingested during `npm run sync` |
 
 Outputs of sync:
 
@@ -18,13 +20,12 @@ Outputs of sync:
 
 Manual crosswalk seeds: `data/crosswalks.json`.
 
-Bundled input seeds: `data/aa-catalog.json`, `data/cursor-models.csv`.
+Bundled input seeds: `data/aa-catalog.json`, `data/cursor-models.csv`, `data/cursorbench.json`, `data/opencode-go.json`.
 
 ## Stubbed / not enabled
 
 | Source | Status | Notes |
 |--------|--------|-------|
-| OpenCode | Skipped | Need public registry URL |
 | KiloCode | Skipped | Need public registry URL |
 | WhatLLM | Skipped | Aggregator; terms/robots; do not override AA |
 | LLM Stats | Skipped | Same |

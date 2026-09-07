@@ -1,32 +1,31 @@
 {
   "schemaVersion": 1,
   "estimatorVersion": "1.0.0",
-  "generatedAt": "2026-09-06T08:21:30.403Z",
+  "generatedAt": "2026-09-07T08:03:58.935Z",
   "sources": [
     {
       "id": "artificial_analysis",
       "status": "ok",
-      "pulledAt": "2026-09-06T08:21:29.579Z",
-      "rowCount": 634
+      "pulledAt": "2026-09-07T08:03:55.913Z",
+      "rowCount": 643
     },
     {
       "id": "cursor",
       "status": "ok",
-      "pulledAt": "2026-09-06T08:21:29.591Z",
+      "pulledAt": "2026-09-07T08:03:55.929Z",
       "rowCount": 363
     },
     {
       "id": "openrouter",
       "status": "ok",
-      "pulledAt": "2026-09-06T08:21:30.332Z",
-      "rowCount": 983
+      "pulledAt": "2026-09-07T08:03:58.804Z",
+      "rowCount": 982
     },
     {
       "id": "opencode",
-      "status": "skipped",
-      "pulledAt": null,
-      "rowCount": 0,
-      "error": "Registry URL not configured"
+      "status": "ok",
+      "pulledAt": "2026-09-07T00:00:00.000Z",
+      "rowCount": 28
     },
     {
       "id": "kilocode",
@@ -50,11 +49,11 @@
       "error": "Guarded scraper disabled until robots/terms check passes"
     }
   ],
-  "variantCount": 770,
-  "unmatched": 299,
+  "variantCount": 1184,
+  "unmatched": 525,
   "changesFromPrevious": {
-    "added": 0,
+    "added": 1,
     "removed": 0,
-    "updated": 770
+    "updated": 1183
   }
 }

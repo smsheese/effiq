@@ -43,6 +43,8 @@ function baseVariant(partial: Partial<ModelVariant> & { canonicalId: string; fam
       throughputTps: null,
       ttftSeconds: null,
       latencyMs: null,
+      taskTimeSeconds: null,
+      taskTokens: null,
       inputUsdPerMillion: metric(1, "measured"),
       outputUsdPerMillion: metric(5, "measured"),
       cacheReadUsdPerMillion: metric(0.1, "measured"),
@@ -195,5 +197,102 @@ describe("scoring", () => {
     const cost = estimateTaskCostUsd(v, getProfile("coding").workload);
     expect(cost?.status).not.toBe("measured");
     expect(cost?.value).toBeGreaterThan(0);
+  });
+
+  it("includes cursorbench values with higher weightage in cursor section", () => {
+    // Model A: High CursorBench (72.8), moderate coding (60)
+    const modelA = baseVariant({
+      canonicalId: "model-a::xhigh::cursor",
+      familySlug: "model-a",
+      effort: "xhigh",
+      ids: { cursorTaskSlug: "model-a-xhigh" },
+    });
+    modelA.metrics.intelligence = metric(50);
+    modelA.metrics.coding = metric(60);
+    modelA.metrics.cursorBench = {
+      value: 72.8,
+      unit: "percent_0_100",
+      source: "cursor",
+      observedAt: "2026-09-02T00:00:00Z",
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+    };
+    modelA.metrics.cursorBenchCostUsd = {
+      value: 2.81,
+      unit: "usd_per_task",
+      source: "cursor",
+      observedAt: "2026-09-02T00:00:00Z",
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+    };
+
+    // Model B: Moderate CursorBench (55.0), high coding (75)
+    const modelB = baseVariant({
+      canonicalId: "model-b::xhigh::cursor",
+      familySlug: "model-b",
+      effort: "xhigh",
+      ids: { cursorTaskSlug: "model-b-xhigh" },
+    });
+    modelB.metrics.intelligence = metric(50);
+    modelB.metrics.coding = metric(75);
+    modelB.metrics.cursorBench = {
+      value: 55.0,
+      unit: "percent_0_100",
+      source: "cursor",
+      observedAt: "2026-09-02T00:00:00Z",
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+    };
+    modelB.metrics.cursorBenchCostUsd = {
+      value: 2.81,
+      unit: "usd_per_task",
+      source: "cursor",
+      observedAt: "2026-09-02T00:00:00Z",
+      confidence: 0.95,
+      status: "measured",
+      method: "cursorbench_3_2",
+    };
+
+    const variants = [modelA, modelB];
+
+    // Standard scoring (all channel)
+    const stdScored = scoreVariants(variants, {
+      profileId: "coding",
+      weights: getProfile("coding").defaultWeights,
+      intelligenceFloor: 40,
+      includeApproximations: true,
+      minConfidence: 0,
+      conservativeRanking: false,
+      channel: "all",
+    });
+
+    // Cursor section scoring (cursor channel)
+    const cursorScored = scoreVariants(variants, {
+      profileId: "coding",
+      weights: getProfile("coding").defaultWeights,
+      intelligenceFloor: 40,
+      includeApproximations: true,
+      minConfidence: 0,
+      conservativeRanking: false,
+      channel: "cursor",
+    });
+
+    const stdA = stdScored.find((s) => s.variant.canonicalId === modelA.canonicalId)!;
+    const stdB = stdScored.find((s) => s.variant.canonicalId === modelB.canonicalId)!;
+    const cursorA = cursorScored.find((s) => s.variant.canonicalId === modelA.canonicalId)!;
+    const cursorB = cursorScored.find((s) => s.variant.canonicalId === modelB.canonicalId)!;
+
+    // Both include cursorbench in explanation
+    expect(stdA.explanation.some((e) => e.includes("cursorbench"))).toBe(true);
+    expect(cursorA.explanation.some((e) => e.includes("cursor-weighted"))).toBe(true);
+
+    // In cursor section, Model A's domain score relative to Model B increases due to higher CursorBench weight
+    const stdDiff = stdB.domainScore! - stdA.domainScore!;
+    const cursorDiff = cursorB.domainScore! - cursorA.domainScore!;
+    // Model B's advantage from AA coding (75 vs 60) shrinks or flips under CursorBench 2.5x weightage
+    expect(cursorDiff).toBeLessThan(stdDiff);
   });
 });

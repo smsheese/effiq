@@ -14,7 +14,8 @@ export const fmtPrice = (perTokenUsd: number | null | undefined): string | null 
   if (perTokenUsd == null || !isFinite(perTokenUsd)) return null;
   const perM = perTokenUsd * 1e6;
   if (perM === 0) return "0";
-  if (perM < 0.001) return "$" + perM.toExponential(1);
+  if (perM < 0.0001) return "$" + perM.toFixed(6).replace(/0+$/, "");
+  if (perM < 0.001) return "$" + perM.toFixed(5).replace(/0+$/, "");
   return "$" + (perM >= 100 ? Math.round(perM).toLocaleString() : perM.toFixed(perM < 1 ? 4 : 2));
 };
 

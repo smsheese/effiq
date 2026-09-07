@@ -1,0 +1,608 @@
+{
+  "benchmark": "CursorBench 3.2",
+  "url": "https://cursor.com/cursorbench",
+  "observedAt": "2026-09-02T00:00:00Z",
+  "description": "CursorBench measures model capability on real Cursor agent tasks (codebase understanding, bugfinding, planning, code review, edits, refactoring, instruction following, and advanced tool use). Average cost per task is computed using each model's published per-million-token pricing applied to actual tokens used.",
+  "results": [
+    {
+      "rank": 1,
+      "model": "Fable 5.1 Max",
+      "familySlug": "claude-fable-5-1",
+      "effort": "max",
+      "score": 73.4,
+      "costUsd": 9.64,
+      "tokens": 72060,
+      "steps": 70
+    },
+    {
+      "rank": 2,
+      "model": "Fable 5.1 Extra High",
+      "familySlug": "claude-fable-5-1",
+      "effort": "xhigh",
+      "score": 72.8,
+      "costUsd": 6.96,
+      "tokens": 51349,
+      "steps": 55
+    },
+    {
+      "rank": 3,
+      "model": "Grok 4.6 Extra High",
+      "familySlug": "grok-4-6",
+      "effort": "xhigh",
+      "score": 70.8,
+      "costUsd": 2.81,
+      "tokens": 41136,
+      "steps": 46
+    },
+    {
+      "rank": 4,
+      "model": "Fable 5 Max",
+      "familySlug": "claude-fable-5",
+      "effort": "max",
+      "score": 70.5,
+      "costUsd": 17.32,
+      "tokens": 103525,
+      "steps": 72
+    },
+    {
+      "rank": 5,
+      "model": "Opus 5 Max",
+      "familySlug": "claude-opus-5",
+      "effort": "max",
+      "score": 70.0,
+      "costUsd": 8.23,
+      "tokens": 61838,
+      "steps": 78
+    },
+    {
+      "rank": 6,
+      "model": "Grok 4.6 High",
+      "familySlug": "grok-4-6",
+      "effort": "high",
+      "score": 69.9,
+      "costUsd": 2.34,
+      "tokens": 32449,
+      "steps": 39
+    },
+    {
+      "rank": 7,
+      "model": "Fable 5.1 High",
+      "familySlug": "claude-fable-5-1",
+      "effort": "high",
+      "score": 69.4,
+      "costUsd": 4.80,
+      "tokens": 33153,
+      "steps": 44
+    },
+    {
+      "rank": 8,
+      "model": "Opus 5 Extra High",
+      "familySlug": "claude-opus-5",
+      "effort": "xhigh",
+      "score": 69.3,
+      "costUsd": 7.35,
+      "tokens": 54239,
+      "steps": 72
+    },
+    {
+      "rank": 9,
+      "model": "Gemini 3.8 Flash High",
+      "familySlug": "gemini-3-8-flash",
+      "effort": "high",
+      "score": 69.2,
+      "costUsd": 2.38,
+      "tokens": 81524,
+      "steps": 161
+    },
+    {
+      "rank": 10,
+      "model": "Fable 5 Extra High",
+      "familySlug": "claude-fable-5",
+      "effort": "xhigh",
+      "score": 68.4,
+      "costUsd": 11.73,
+      "tokens": 64971,
+      "steps": 56
+    },
+    {
+      "rank": 11,
+      "model": "Fable 5.1 Medium",
+      "familySlug": "claude-fable-5-1",
+      "effort": "medium",
+      "score": 68.0,
+      "costUsd": 3.53,
+      "tokens": 23801,
+      "steps": 36
+    },
+    {
+      "rank": 12,
+      "model": "GPT-5.6 Sol Max",
+      "familySlug": "gpt-5-6-sol",
+      "effort": "max",
+      "score": 67.2,
+      "costUsd": 5.69,
+      "tokens": 28320,
+      "steps": 48
+    },
+    {
+      "rank": 13,
+      "model": "Grok 4.6 Medium",
+      "familySlug": "grok-4-6",
+      "effort": "medium",
+      "score": 67.1,
+      "costUsd": 1.28,
+      "tokens": 17942,
+      "steps": 29
+    },
+    {
+      "rank": 14,
+      "model": "Gemini 3.8 Flash Medium",
+      "familySlug": "gemini-3-8-flash",
+      "effort": "medium",
+      "score": 67.0,
+      "costUsd": 1.93,
+      "tokens": 61603,
+      "steps": 136
+    },
+    {
+      "rank": 15,
+      "model": "Opus 5 High",
+      "familySlug": "claude-opus-5",
+      "effort": "high",
+      "score": 66.7,
+      "costUsd": 3.91,
+      "tokens": 27932,
+      "steps": 48
+    },
+    {
+      "rank": 16,
+      "model": "Fable 5 High",
+      "familySlug": "claude-fable-5",
+      "effort": "high",
+      "score": 66.5,
+      "costUsd": 8.77,
+      "tokens": 43747,
+      "steps": 48
+    },
+    {
+      "rank": 17,
+      "model": "Fable 5.1 Low",
+      "familySlug": "claude-fable-5-1",
+      "effort": "low",
+      "score": 66.2,
+      "costUsd": 2.90,
+      "tokens": 19522,
+      "steps": 31
+    },
+    {
+      "rank": 18,
+      "model": "Fable 5 Medium",
+      "familySlug": "claude-fable-5",
+      "effort": "medium",
+      "score": 65.2,
+      "costUsd": 6.80,
+      "tokens": 30366,
+      "steps": 41
+    },
+    {
+      "rank": 19,
+      "model": "GPT-5.6 Terra Max",
+      "familySlug": "gpt-5-6-terra",
+      "effort": "max",
+      "score": 64.9,
+      "costUsd": 2.31,
+      "tokens": 32969,
+      "steps": 47
+    },
+    {
+      "rank": 20,
+      "model": "GPT-5.6 Sol Extra High",
+      "familySlug": "gpt-5-6-sol",
+      "effort": "xhigh",
+      "score": 64.5,
+      "costUsd": 3.88,
+      "tokens": 19699,
+      "steps": 38
+    },
+    {
+      "rank": 21,
+      "model": "Opus 5 Medium",
+      "familySlug": "claude-opus-5",
+      "effort": "medium",
+      "score": 64.3,
+      "costUsd": 3.29,
+      "tokens": 23612,
+      "steps": 44
+    },
+    {
+      "rank": 22,
+      "model": "GPT-5.6 Sol High",
+      "familySlug": "gpt-5-6-sol",
+      "effort": "high",
+      "score": 63.5,
+      "costUsd": 2.79,
+      "tokens": 13867,
+      "steps": 32
+    },
+    {
+      "rank": 23,
+      "model": "Opus 5 Low",
+      "familySlug": "claude-opus-5",
+      "effort": "low",
+      "score": 62.8,
+      "costUsd": 2.55,
+      "tokens": 18529,
+      "steps": 37
+    },
+    {
+      "rank": 24,
+      "model": "Opus 4.8 Max",
+      "familySlug": "claude-opus-4-8",
+      "effort": "max",
+      "score": 62.3,
+      "costUsd": 5.77,
+      "tokens": 71411,
+      "steps": 44
+    },
+    {
+      "rank": 25,
+      "model": "Fable 5 Low",
+      "familySlug": "claude-fable-5",
+      "effort": "low",
+      "score": 62.1,
+      "costUsd": 4.46,
+      "tokens": 18182,
+      "steps": 31
+    },
+    {
+      "rank": 26,
+      "model": "Gemini 3.7 Flash High",
+      "familySlug": "gemini-3-7-flash",
+      "effort": "high",
+      "score": 61.6,
+      "costUsd": 1.20,
+      "tokens": 38448,
+      "steps": 99
+    },
+    {
+      "rank": 27,
+      "model": "Sonnet 5 Max",
+      "familySlug": "claude-sonnet-5",
+      "effort": "max",
+      "score": 61.5,
+      "costUsd": 4.30,
+      "tokens": 92882,
+      "steps": 86
+    },
+    {
+      "rank": 28,
+      "model": "GPT-5.6 Luna Max",
+      "familySlug": "gpt-5-6-luna",
+      "effort": "max",
+      "score": 61.1,
+      "costUsd": 0.39,
+      "tokens": 87973,
+      "steps": 61
+    },
+    {
+      "rank": 29,
+      "model": "Grok 4.6 Low",
+      "familySlug": "grok-4-6",
+      "effort": "low",
+      "score": 61.0,
+      "costUsd": 0.70,
+      "tokens": 10658,
+      "steps": 23
+    },
+    {
+      "rank": 30,
+      "model": "Kimi K3 Max",
+      "familySlug": "kimi-k3",
+      "effort": "max",
+      "score": 60.8,
+      "costUsd": 2.70,
+      "tokens": 38428,
+      "steps": 57
+    },
+    {
+      "rank": 31,
+      "model": "GPT-5.6 Sol Medium",
+      "familySlug": "gpt-5-6-sol",
+      "effort": "medium",
+      "score": 60.0,
+      "costUsd": 1.95,
+      "tokens": 9747,
+      "steps": 27
+    },
+    {
+      "rank": 32,
+      "model": "Kimi K3 High",
+      "familySlug": "kimi-k3",
+      "effort": "high",
+      "score": 59.7,
+      "costUsd": 1.89,
+      "tokens": 26846,
+      "steps": 47
+    },
+    {
+      "rank": 33,
+      "model": "Opus 4.8 Extra High",
+      "familySlug": "claude-opus-4-8",
+      "effort": "xhigh",
+      "score": 59.4,
+      "costUsd": 4.50,
+      "tokens": 51121,
+      "steps": 40
+    },
+    {
+      "rank": 34,
+      "model": "GPT-5.6 Terra Extra High",
+      "familySlug": "gpt-5-6-terra",
+      "effort": "xhigh",
+      "score": 59.2,
+      "costUsd": 1.15,
+      "tokens": 16089,
+      "steps": 29
+    },
+    {
+      "rank": 35,
+      "model": "Gemini 3.7 Flash Medium",
+      "familySlug": "gemini-3-7-flash",
+      "effort": "medium",
+      "score": 59.0,
+      "costUsd": 0.95,
+      "tokens": 30953,
+      "steps": 82
+    },
+    {
+      "rank": 36,
+      "model": "Sonnet 5 Extra High",
+      "familySlug": "claude-sonnet-5",
+      "effort": "xhigh",
+      "score": 58.7,
+      "costUsd": 2.77,
+      "tokens": 52871,
+      "steps": 67
+    },
+    {
+      "rank": 37,
+      "model": "GPT-5.5 High",
+      "familySlug": "gpt-5-5",
+      "effort": "high",
+      "score": 58.4,
+      "costUsd": 2.05,
+      "tokens": 12183,
+      "steps": 28
+    },
+    {
+      "rank": 38,
+      "model": "GPT-5.5 Extra High",
+      "familySlug": "gpt-5-5",
+      "effort": "xhigh",
+      "score": 58.4,
+      "costUsd": 2.85,
+      "tokens": 17534,
+      "steps": 32
+    },
+    {
+      "rank": 39,
+      "model": "Opus 4.8 High",
+      "familySlug": "claude-opus-4-8",
+      "effort": "high",
+      "score": 58.0,
+      "costUsd": 3.15,
+      "tokens": 33548,
+      "steps": 33
+    },
+    {
+      "rank": 40,
+      "model": "GPT-5.6 Luna Extra High",
+      "familySlug": "gpt-5-6-luna",
+      "effort": "xhigh",
+      "score": 57.7,
+      "costUsd": 0.23,
+      "tokens": 22480,
+      "steps": 48
+    },
+    {
+      "rank": 41,
+      "model": "Sonnet 5 High",
+      "familySlug": "claude-sonnet-5",
+      "effort": "high",
+      "score": 56.9,
+      "costUsd": 2.13,
+      "tokens": 39483,
+      "steps": 57
+    },
+    {
+      "rank": 42,
+      "model": "GPT-5.6 Luna High",
+      "familySlug": "gpt-5-6-luna",
+      "effort": "high",
+      "score": 56.8,
+      "costUsd": 0.16,
+      "tokens": 15141,
+      "steps": 40
+    },
+    {
+      "rank": 43,
+      "model": "Opus 4.8 Medium",
+      "familySlug": "claude-opus-4-8",
+      "effort": "medium",
+      "score": 56.1,
+      "costUsd": 2.81,
+      "tokens": 28384,
+      "steps": 32
+    },
+    {
+      "rank": 44,
+      "model": "Composer 2.5",
+      "familySlug": "composer-2-5",
+      "effort": "medium",
+      "score": 56.1,
+      "costUsd": 0.44,
+      "tokens": 14286,
+      "steps": 33
+    },
+    {
+      "rank": 45,
+      "model": "GLM 5.2 Max",
+      "familySlug": "glm-5-2",
+      "effort": "max",
+      "score": 55.0,
+      "costUsd": 1.76,
+      "tokens": 35946,
+      "steps": 58
+    },
+    {
+      "rank": 46,
+      "model": "GPT-5.6 Terra High",
+      "familySlug": "gpt-5-6-terra",
+      "effort": "high",
+      "score": 54.2,
+      "costUsd": 0.71,
+      "tokens": 9468,
+      "steps": 23
+    },
+    {
+      "rank": 47,
+      "model": "GPT-5.5 Medium",
+      "familySlug": "gpt-5-5",
+      "effort": "medium",
+      "score": 53.8,
+      "costUsd": 1.51,
+      "tokens": 8522,
+      "steps": 25
+    },
+    {
+      "rank": 48,
+      "model": "Gemini 3.7 Flash Low",
+      "familySlug": "gemini-3-7-flash",
+      "effort": "low",
+      "score": 53.8,
+      "costUsd": 0.74,
+      "tokens": 20594,
+      "steps": 68
+    },
+    {
+      "rank": 49,
+      "model": "Opus 4.8 Low",
+      "familySlug": "claude-opus-4-8",
+      "effort": "low",
+      "score": 53.1,
+      "costUsd": 2.02,
+      "tokens": 19624,
+      "steps": 27
+    },
+    {
+      "rank": 50,
+      "model": "GPT-5.6 Sol Low",
+      "familySlug": "gpt-5-6-sol",
+      "effort": "low",
+      "score": 52.6,
+      "costUsd": 1.01,
+      "tokens": 5104,
+      "steps": 19
+    },
+    {
+      "rank": 51,
+      "model": "Sonnet 5 Medium",
+      "familySlug": "claude-sonnet-5",
+      "effort": "medium",
+      "score": 52.4,
+      "costUsd": 1.44,
+      "tokens": 26200,
+      "steps": 46
+    },
+    {
+      "rank": 52,
+      "model": "GLM 5.2 High",
+      "familySlug": "glm-5-2",
+      "effort": "high",
+      "score": 51.5,
+      "costUsd": 1.19,
+      "tokens": 21829,
+      "steps": 49
+    },
+    {
+      "rank": 53,
+      "model": "Kimi K3 Low",
+      "familySlug": "kimi-k3",
+      "effort": "low",
+      "score": 50.5,
+      "costUsd": 0.99,
+      "tokens": 13007,
+      "steps": 33
+    },
+    {
+      "rank": 54,
+      "model": "GPT-5.6 Terra Medium",
+      "familySlug": "gpt-5-6-terra",
+      "effort": "medium",
+      "score": 50.3,
+      "costUsd": 0.49,
+      "tokens": 6222,
+      "steps": 20
+    },
+    {
+      "rank": 55,
+      "model": "Kimi K2.7 Code",
+      "familySlug": "kimi-k2-7-code",
+      "effort": "none",
+      "score": 49.7,
+      "costUsd": 1.43,
+      "tokens": 31247,
+      "steps": 58
+    },
+    {
+      "rank": 56,
+      "model": "GPT-5.6 Luna Medium",
+      "familySlug": "gpt-5-6-luna",
+      "effort": "medium",
+      "score": 47.7,
+      "costUsd": 0.08,
+      "tokens": 7095,
+      "steps": 28
+    },
+    {
+      "rank": 57,
+      "model": "Sonnet 5 Low",
+      "familySlug": "claude-sonnet-5",
+      "effort": "low",
+      "score": 47.7,
+      "costUsd": 0.87,
+      "tokens": 16269,
+      "steps": 33
+    },
+    {
+      "rank": 58,
+      "model": "GPT-5.6 Terra Low",
+      "familySlug": "gpt-5-6-terra",
+      "effort": "low",
+      "score": 46.9,
+      "costUsd": 0.42,
+      "tokens": 5312,
+      "steps": 19
+    },
+    {
+      "rank": 59,
+      "model": "GPT-5.5 Low",
+      "familySlug": "gpt-5-5",
+      "effort": "low",
+      "score": 46.6,
+      "costUsd": 0.98,
+      "tokens": 5168,
+      "steps": 20
+    },
+    {
+      "rank": 60,
+      "model": "GPT-5.6 Luna Low",
+      "familySlug": "gpt-5-6-luna",
+      "effort": "low",
+      "score": 37.6,
+      "costUsd": 0.03,
+      "tokens": 3209,
+      "steps": 17
+    }
+  ]
+}

@@ -1,49 +1,99 @@
 ---
-
 import "../styles/global.css";
+import {
+  absoluteUrl,
+  canonicalFromAstroUrl,
+  SITE_NAME,
+} from "@/lib/site";
 
 interface Props {
   title: string;
   description: string;
+  ogImage?: string;
+  jsonLd?: object | object[];
+  noindex?: boolean;
 }
 
 const {
   title,
   description,
+  ogImage = "/og.png",
+  jsonLd,
+  noindex = false,
 } = Astro.props;
 
-const SITE = Astro.site?.href ?? "https://models.example.com";
+const site = Astro.site?.href ?? "http://localhost:4321/";
+const canonical = canonicalFromAstroUrl(site, Astro.url);
+const imageUrl = absoluteUrl(site, ogImage);
+const jsonLdPayload = Array.isArray(jsonLd)
+  ? jsonLd
+  : jsonLd
+    ? [jsonLd]
+    : [];
 ---
 <!doctype html>
 <html lang="en" class="dark">
   <head>
+    <script is:inline>
+      (function() {
+        try {
+          var saved = localStorage.getItem('theme');
+          if (saved === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else if (saved === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#4F46E5" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f4f8" media="(prefers-color-scheme: light)" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="application-name" content={SITE_NAME} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="effiq" />
+    <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:url" content={SITE} />
-    <meta property="og:image" content={`${SITE}/og.png`} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={title} />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={`${SITE}/og.png`} />
+    <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={title} />
 
-    <!-- Canonical -->
-    <link rel="canonical" href={SITE} />
-
+    <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    {jsonLdPayload.map((block) => (
+      <script is:inline type="application/ld+json" set:html={JSON.stringify(block)} />
+    ))}
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground"
+    >
+      Skip to content
+    </a>
     <slot />
   </body>
 </html>

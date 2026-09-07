@@ -25,6 +25,7 @@ export interface RankingOptions {
   minConfidence: number;
   customWorkload?: Partial<WorkloadTemplate> | null;
   conservativeRanking: boolean;
+  channel?: "all" | "openrouter" | "cursor" | "opencode";
 }
 
 function val(m: SourcedNumber | null | undefined, conservative = false): number | null {
@@ -45,9 +46,18 @@ function costVal(m: SourcedNumber | null | undefined, conservative = false): num
 export function estimateTaskCostUsd(
   variant: ModelVariant,
   workload: WorkloadTemplate,
+  inCursorSection = false,
 ): SourcedNumber | null {
+  if (inCursorSection && variant.metrics.cursorBenchCostUsd?.status === "measured") {
+    return variant.metrics.cursorBenchCostUsd;
+  }
+
   const measured = variant.metrics.taskCostUsd;
   if (measured && measured.status === "measured") return measured;
+
+  if (variant.metrics.cursorBenchCostUsd?.status === "measured") {
+    return variant.metrics.cursorBenchCostUsd;
+  }
 
   const inPrice = val(variant.metrics.inputUsdPerMillion);
   const outPrice = val(variant.metrics.outputUsdPerMillion);
@@ -91,6 +101,7 @@ export function domainScore(
   variant: ModelVariant,
   profile: UsageProfile,
   conservative: boolean,
+  inCursorSection = false,
 ): { score: number | null; explanation: string[] } {
   const explanation: string[] = [];
   let weighted = 0;
@@ -116,6 +127,21 @@ export function domainScore(
     weighted += scaled * w;
     weightSum += w;
     explanation.push(`${metricKey}=${scaled.toFixed(1)}×${w}`);
+  }
+
+  // Include CursorBench values in domain capability calculation
+  const cbRaw = val(variant.metrics.cursorBench, conservative);
+  if (cbRaw != null) {
+    // In cursor section, give CursorBench more weightage
+    const codingWeight = profile.domainWeights.coding ?? 1;
+    const cbWeight = inCursorSection
+      ? Math.max(3, codingWeight * 2.5)
+      : Math.max(1, codingWeight * 0.8);
+    weighted += cbRaw * cbWeight;
+    weightSum += cbWeight;
+    explanation.push(
+      `cursorbench=${cbRaw.toFixed(1)}×${cbWeight.toFixed(1)}${inCursorSection ? " (cursor-weighted)" : ""}`,
+    );
   }
 
   if (weightSum <= 0) return { score: null, explanation };
@@ -148,6 +174,7 @@ export function scoreVariants(
   variants: ModelVariant[],
   options: RankingOptions,
 ): ScoredVariant[] {
+  const isCursorSection = options.channel === "cursor";
   const profile = getProfile(options.profileId);
   const weights = normalizeWeights(options.weights);
   const workload: WorkloadTemplate = {
@@ -168,7 +195,7 @@ export function scoreVariants(
   }
 
   const withCosts = pool.map((v) => {
-    const task = estimateTaskCostUsd(v, workload);
+    const task = estimateTaskCostUsd(v, workload, isCursorSection);
     return { v, task };
   });
 
@@ -198,6 +225,9 @@ export function scoreVariants(
   const agentVals = eligible
     .map(({ v }) => val(v.metrics.agentic, options.conservativeRanking))
     .filter((x): x is number => x != null);
+  const cbVals = eligible
+    .map(({ v }) => val(v.metrics.cursorBench, options.conservativeRanking))
+    .filter((x): x is number => x != null);
   const costVals = eligible
     .map(({ task }) => costVal(task, options.conservativeRanking))
     .filter((x): x is number => x != null && x > 0);
@@ -219,6 +249,7 @@ export function scoreVariants(
       v,
       profile,
       options.conservativeRanking,
+      isCursorSection,
     );
     explanation.push(...domainExpl.map((e) => `domain:${e}`));
 
@@ -233,7 +264,16 @@ export function scoreVariants(
         : null);
     const throughput = val(v.metrics.throughputTps, false);
 
-    const parts: Array<{ key: keyof MetricWeights; n: number | null; weight: number }> = [
+    const cbVal = val(v.metrics.cursorBench, options.conservativeRanking);
+    const cbRank = cbVal != null && cbVals.length > 0 ? percentileRank(cbVals, cbVal) : null;
+    const cbWeight =
+      cbRank != null
+        ? isCursorSection
+          ? (weights.coding || 15) * 1.5
+          : (weights.coding || 15) * 0.5
+        : 0;
+
+    const parts: Array<{ key: string; n: number | null; weight: number }> = [
       {
         key: "intelligence",
         n: intel != null ? percentileRank(intelVals, intel) : null,
@@ -249,6 +289,15 @@ export function scoreVariants(
         n: agentic != null ? percentileRank(agentVals, agentic) : null,
         weight: weights.agentic,
       },
+      ...(cbRank != null
+        ? [
+            {
+              key: isCursorSection ? "cursorbench (cursor-weighted)" : "cursorbench",
+              n: cbRank,
+              weight: cbWeight,
+            },
+          ]
+        : []),
       {
         key: "task_cost",
         n: cost != null ? logNormalize(costVals, cost, true) : null,
