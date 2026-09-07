@@ -1,24 +1,24 @@
 {
   "schemaVersion": 1,
   "estimatorVersion": "1.0.0",
-  "generatedAt": "2026-09-07T08:16:43.962Z",
+  "generatedAt": "2026-09-07T08:29:35.623Z",
   "sources": [
     {
       "id": "artificial_analysis",
       "status": "ok",
-      "pulledAt": "2026-09-07T08:16:42.785Z",
+      "pulledAt": "2026-09-07T08:29:34.612Z",
       "rowCount": 643
     },
     {
       "id": "cursor",
       "status": "ok",
-      "pulledAt": "2026-09-07T08:16:42.809Z",
+      "pulledAt": "2026-09-07T08:29:34.631Z",
       "rowCount": 363
     },
     {
       "id": "openrouter",
       "status": "ok",
-      "pulledAt": "2026-09-07T08:16:43.822Z",
+      "pulledAt": "2026-09-07T08:29:35.509Z",
       "rowCount": 982
     },
     {
