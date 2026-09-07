@@ -26,7 +26,10 @@ Env:
     OPENROUTER_API_KEY   Required for live refresh. When unset the script
                          exits 0 with a warning so CI keeps working on the
                          bundled seeds (mirrors sync.ts fallback behavior).
-    REFRESH_MODEL        OpenRouter model id (default: openrouter/auto).
+    REFRESH_MODEL        OpenRouter model id (default: openai/gpt-5.6-luna).
+    REFRESH_REASONING_EFFORT
+                         Reasoning effort for the refresh model
+                         (default: high; empty disables the parameter).
     REFRESH_MAX_CHARS    Max page-text chars sent to the model (default: 60000).
 """
 
@@ -123,24 +126,27 @@ def fetch_text(url: str, max_chars: int) -> str:
     return text[:max_chars]
 
 
-def openrouter_extract(api_key: str, model: str, source: str, page_text: str) -> dict:
-    body = json.dumps(
-        {
-            "model": model,
-            "temperature": 0,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": EXTRACT_PROMPTS[source] + page_text,
-                },
-            ],
-        }
-    ).encode("utf-8")
+def openrouter_extract(
+    api_key: str, model: str, source: str, page_text: str,
+    reasoning_effort: str = "high",
+) -> dict:
+    body: dict = {
+        "model": model,
+        "temperature": 0,
+        "response_format": {"type": "json_object"},
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": EXTRACT_PROMPTS[source] + page_text,
+            },
+        ],
+    }
+    if reasoning_effort:
+        body["reasoning"] = {"effort": reasoning_effort}
     req = urllib.request.Request(
         "https://openrouter.ai/api/v1/chat/completions",
-        data=body,
+        data=json.dumps(body).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -477,7 +483,10 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--only", default="cursor,opencode,bench")
-    parser.add_argument("--model", default=os.environ.get("REFRESH_MODEL", "openrouter/auto"))
+    parser.add_argument("--model",
+                        default=os.environ.get("REFRESH_MODEL", "openai/gpt-5.6-luna"))
+    parser.add_argument("--reasoning-effort",
+                        default=os.environ.get("REFRESH_REASONING_EFFORT", "high"))
     parser.add_argument("--max-chars", type=int,
                         default=int(os.environ.get("REFRESH_MAX_CHARS", "60000")))
     args = parser.parse_args()
@@ -506,9 +515,10 @@ def main() -> int:
                 "keeping bundled seed.")
             continue
         log(f"[*] {source}: extracting via {args.model} "
-            f"({len(page_text)} chars) ...")
+            f"(reasoning={args.reasoning_effort or 'off'}, {len(page_text)} chars) ...")
         try:
-            data = openrouter_extract(api_key, args.model, source, page_text)
+            data = openrouter_extract(api_key, args.model, source, page_text,
+                                      args.reasoning_effort)
         except Exception as e:  # noqa: BLE001 - report and continue
             log(f"[!] {source}: extraction failed ({e}) — keeping bundled seed.")
             failed = True

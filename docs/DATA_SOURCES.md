@@ -19,7 +19,9 @@ seed files. Merges are update-only: prices/scores update in place, new models
 are appended, nothing is ever deleted, and `--dry-run` previews changes. It
 runs best-effort at the start of the daily sync workflow and skips cleanly when
 `OPENROUTER_API_KEY` is unset, so the matrix build always falls back to the
-bundled seeds. Pin the model with `REFRESH_MODEL` (default `openrouter/auto`).
+bundled seeds. Pin the model with `REFRESH_MODEL` (default
+`openai/gpt-5.6-luna`) and the reasoning effort with
+`REFRESH_REASONING_EFFORT` (default `high`).
 The older regex-only `scripts/cursor_pricing_pyagent.py` (`npm run sync:cursor`)
 remains as a keyless fallback for Cursor pricing.
 

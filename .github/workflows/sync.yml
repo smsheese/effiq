@@ -37,6 +37,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           REFRESH_MODEL: ${{ vars.REFRESH_MODEL }}
+          REFRESH_REASONING_EFFORT: ${{ vars.REFRESH_REASONING_EFFORT }}
         run: python3 scripts/agent_refresh.py
 
       - name: Run matrix sync

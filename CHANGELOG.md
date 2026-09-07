@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Agent seed refresh (`scripts/agent_refresh.py`, `npm run sync:agent`): an OpenRouter chat model (temperature 0, JSON-only) parses the Cursor pricing, OpenCode Go, and CursorBench docs pages into `data/cursor-models.csv`, `data/opencode-go.json`, and `data/cursorbench.json`. Merges are update-only (new models appended, nothing deleted) with `--dry-run` and `--self-test` support. Wired best-effort (`continue-on-error`) into the daily sync workflow ahead of `npm run sync`; skips cleanly without `OPENROUTER_API_KEY`, model pinned via `REFRESH_MODEL` (default `openrouter/auto`).
+- Agent seed refresh (`scripts/agent_refresh.py`, `npm run sync:agent`): an OpenRouter chat model (temperature 0, JSON-only) parses the Cursor pricing, OpenCode Go, and CursorBench docs pages into `data/cursor-models.csv`, `data/opencode-go.json`, and `data/cursorbench.json`. Merges are update-only (new models appended, nothing deleted) with `--dry-run` and `--self-test` support. Wired best-effort (`continue-on-error`) into the daily sync workflow ahead of `npm run sync`; skips cleanly without `OPENROUTER_API_KEY`, model pinned via `REFRESH_MODEL` (default `openai/gpt-5.6-luna` with `high` reasoning effort, overridable via `REFRESH_REASONING_EFFORT`).
 - Explorer now persists locked weight keys (up to 4) and the active weight preset in local storage alongside weights, profile, and intelligence floor.
 
 ### Changed
