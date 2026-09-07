@@ -9,8 +9,10 @@ Pages (not APIs) are the source of truth for:
      -> data/cursor-models.csv  (price columns only, rows never added/deleted)
   2. OpenCode Go models/prices (https://opencode.ai/docs/go/)
      -> data/opencode-go.json   (prices merged by modelId, new models appended)
-  3. CursorBench results       (https://cursor.com/cursorbench)
-     -> data/cursorbench.json   (scores merged by model, never deleted)
+
+  CursorBench (https://cursor.com/cursorbench) is intentionally NOT refreshed
+  here: the page is a JS app with results baked into chart SVG, so automated
+  extraction confabulates rows. data/cursorbench.json stays a manual snapshot.
 
 How it works:
   fetch page HTML -> strip to text -> ask an OpenRouter chat model
@@ -31,6 +33,7 @@ Env:
                          Reasoning effort for the refresh model
                          (default: high; empty disables the parameter).
     REFRESH_MAX_CHARS    Max page-text chars sent to the model (default: 60000).
+    REFRESH_MAX_TOKENS   Max completion tokens for extraction (default: 8000).
 """
 
 import argparse
@@ -47,18 +50,34 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SOURCES = {
     "cursor": {
+        # Docs sites serve clean markdown at ".md" — the HTML page is a JS app.
         "url": os.environ.get(
-            "CURSOR_DOCS_URL", "https://cursor.com/docs/models-and-pricing"
+            "CURSOR_DOCS_MD_URL",
+            "https://cursor.com/docs/models-and-pricing.md",
         ),
         "seed": os.path.join(ROOT, "data", "cursor-models.csv"),
+        "format": "markdown",
+        # Static docs tables: safe for LLM extraction. Merges apply only
+        # when at least this many rows come back (guards partial pages).
+        "min_rows": 30,
     },
     "opencode": {
-        "url": "https://opencode.ai/docs/go/",
+        "url": os.environ.get("OPENCODE_DOCS_MD_URL", "https://opencode.ai/docs/go.md"),
         "seed": os.path.join(ROOT, "data", "opencode-go.json"),
+        "format": "markdown",
+        "min_rows": 15,
     },
     "bench": {
         "url": "https://cursor.com/cursorbench",
         "seed": os.path.join(ROOT, "data", "cursorbench.json"),
+        # Disabled: the page is a JS app whose results live in chart SVG
+        # (top-10 labels only, values encoded as coordinates; the ".md"
+        # endpoint returns the JS shell, not data). Server-side text
+        # extraction yields prose mentions, which an LLM turns into
+        # confabulated rows. Update data/cursorbench.json by hand from
+        # official releases until Cursor ships a machine-readable table/API.
+        "min_rows": 0,
+        "auto": False,
     },
 }
 
@@ -109,16 +128,20 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def fetch_text(url: str, max_chars: int) -> str:
+def fetch_text(url: str, max_chars: int, fmt: str = "html") -> str:
     req = urllib.request.Request(
         url,
         headers={
             "User-Agent": "Mozilla/5.0 (effiq-agent-refresh/1.0)",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            # NOTE: cursor.com 404s the .md endpoint when Accept is
+            # restricted to text/markdown — keep */*.
+            "Accept": "*/*",
         },
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         raw = resp.read().decode("utf-8", errors="replace")
+    if fmt == "markdown":
+        return raw[:max_chars]
     text = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", raw)
     text = re.sub(r"(?s)<[^>]+>", " ", text)
     text = html_mod.unescape(text)
@@ -128,11 +151,12 @@ def fetch_text(url: str, max_chars: int) -> str:
 
 def openrouter_extract(
     api_key: str, model: str, source: str, page_text: str,
-    reasoning_effort: str = "high",
+    reasoning_effort: str = "high", max_tokens: int = 8000,
 ) -> dict:
     body: dict = {
         "model": model,
         "temperature": 0,
+        "max_tokens": max_tokens,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -215,14 +239,21 @@ def refresh_cursor_csv(seed_path: str, rows: list[dict], dry_run: bool) -> dict:
         fast = (row.get("fast_mode") or "").lower() == "true"
         match = None
         for cand in candidates:
-            if fast and f"{cand}-fast" in price_map:
-                match = price_map[f"{cand}-fast"]
-                break
-            if cand in price_map and (
-                not fast or price_map[cand].get("key", "").endswith("-fast")
-            ):
-                match = price_map[cand]
-                break
+            if not cand:
+                continue
+            if fast:
+                # Fast rows may ONLY take prices from an explicit fast
+                # entry in the docs — never silently inherit standard
+                # prices (Cursor fast mode is typically 2x per token).
+                entry = price_map.get(f"{cand}-fast")
+                if entry:
+                    match = entry
+                    break
+            else:
+                entry = price_map.get(cand)
+                if entry and not str(entry.get("key") or "").endswith("-fast"):
+                    match = entry
+                    break
         if not match:
             unchanged += 1
             continue
@@ -418,6 +449,33 @@ def self_test() -> int:
     check("cursor dry-run writes nothing",
           open(csv_path, encoding="utf-8").read().count("0.95") == 0)
 
+    # Fast rows must never inherit standard-key prices
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".csv", delete=False, encoding="utf-8"
+    ) as f:
+        f.write(
+            "model_id,display_name,task_slug,fast_mode,"
+            "price_input_usd_per_million,price_output_usd_per_million,"
+            "price_cache_read_usd_per_million,price_cache_write_usd_per_million,"
+            "pricing_source_date,data_pulled_at_utc\n"
+            "kimi-k2,Kimi K2,kimi-k2-fast,True,1.00,8.00,0.20,,2026-01-01,2026-01-01T00:00:00Z\n"
+        )
+        fast_csv_path = f.name
+    res = refresh_cursor_csv(
+        fast_csv_path,
+        [{"key": "kimi-k2", "input": 0.95, "output": 4.0, "cache_read": 0.19,
+          "cache_write": None}],
+        dry_run=True,
+    )
+    check("cursor fast row ignores standard-key prices", res.get("updated") == 0)
+    res = refresh_cursor_csv(
+        fast_csv_path,
+        [{"key": "kimi-k2-fast", "input": 1.9, "output": 8.0, "cache_read": 0.38,
+          "cache_write": None}],
+        dry_run=True,
+    )
+    check("cursor fast row takes explicit fast prices", res.get("updated") == 1)
+
     # opencode JSON merge (update + append, never delete)
     with tempfile.NamedTemporaryFile(
         "w", suffix=".json", delete=False, encoding="utf-8"
@@ -487,6 +545,8 @@ def main() -> int:
                         default=os.environ.get("REFRESH_MODEL", "openai/gpt-5.6-luna"))
     parser.add_argument("--reasoning-effort",
                         default=os.environ.get("REFRESH_REASONING_EFFORT", "high"))
+    parser.add_argument("--max-tokens", type=int,
+                        default=int(os.environ.get("REFRESH_MAX_TOKENS", "8000")))
     parser.add_argument("--max-chars", type=int,
                         default=int(os.environ.get("REFRESH_MAX_CHARS", "60000")))
     args = parser.parse_args()
@@ -504,9 +564,14 @@ def main() -> int:
     failed = False
     for source in only:
         cfg = SOURCES[source]
+        if not cfg.get("auto", True):
+            log(f"[*] {source}: auto-refresh disabled (JS-rendered results page "
+                "with no machine-readable table) — update the seed manually "
+                f"from official releases ({cfg['seed']}).")
+            continue
         log(f"[*] {source}: fetching {cfg['url']} ...")
         try:
-            page_text = fetch_text(cfg["url"], args.max_chars)
+            page_text = fetch_text(cfg["url"], args.max_chars, cfg.get("format", "html"))
         except Exception as e:  # noqa: BLE001 - report and continue with bundled seed
             log(f"[!] {source}: fetch failed ({e}) — keeping bundled seed.")
             continue
@@ -518,10 +583,16 @@ def main() -> int:
             f"(reasoning={args.reasoning_effort or 'off'}, {len(page_text)} chars) ...")
         try:
             data = openrouter_extract(api_key, args.model, source, page_text,
-                                      args.reasoning_effort)
+                                      args.reasoning_effort, args.max_tokens)
         except Exception as e:  # noqa: BLE001 - report and continue
             log(f"[!] {source}: extraction failed ({e}) — keeping bundled seed.")
             failed = True
+            continue
+        rows = data.get("rows", []) if isinstance(data, dict) else []
+        min_rows = cfg.get("min_rows", 0)
+        if len(rows) < min_rows:
+            log(f"[!] {source}: only {len(rows)} rows extracted "
+                f"(minimum {min_rows}) — keeping bundled seed.")
             continue
         try:
             res = REFRESHERS[source](cfg["seed"], data, args.dry_run)

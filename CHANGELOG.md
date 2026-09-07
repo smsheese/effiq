@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Agent seed refresh (`scripts/agent_refresh.py`, `npm run sync:agent`): an OpenRouter chat model (temperature 0, JSON-only) parses the Cursor pricing, OpenCode Go, and CursorBench docs pages into `data/cursor-models.csv`, `data/opencode-go.json`, and `data/cursorbench.json`. Merges are update-only (new models appended, nothing deleted) with `--dry-run` and `--self-test` support. Wired best-effort (`continue-on-error`) into the daily sync workflow ahead of `npm run sync`; skips cleanly without `OPENROUTER_API_KEY`, model pinned via `REFRESH_MODEL` (default `openai/gpt-5.6-luna` with `high` reasoning effort, overridable via `REFRESH_REASONING_EFFORT`).
+- Agent seed refresh (`scripts/agent_refresh.py`, `npm run sync:agent`): fetches the docs sites' machine-readable markdown (`cursor.com/docs/models-and-pricing.md`, `opencode.ai/docs/go.md` — the HTML pages are JS apps) and extracts rows with an OpenRouter chat model (temperature 0, JSON-only) into `data/cursor-models.csv` and `data/opencode-go.json`. Merges are update-only (new models appended, nothing deleted) with guards: minimum-row counts reject partial extractions and fast-mode rows only take prices from explicit `(Fast)` docs entries. `--dry-run` and `--self-test` supported. CursorBench is excluded by design (results only in chart SVG coordinates — trial runs confabulated rows), so it stays a manual snapshot. Wired best-effort (`continue-on-error`) into the daily sync workflow ahead of `npm run sync`; skips cleanly without `OPENROUTER_API_KEY`, model pinned via `REFRESH_MODEL` (default `openai/gpt-5.6-luna` with `high` reasoning effort, overridable via `REFRESH_REASONING_EFFORT`).
 - Explorer now persists locked weight keys (up to 4) and the active weight preset in local storage alongside weights, profile, and intelligence floor.
+- Explorer cost range filters: min–max inputs for input $/1M, output $/1M, and effective task $ with a one-click clear.
+
+### Fixed
+
+- Replaced the stale Astro-default `public/favicon.ico` with the eq logo (multi-size ICO matching `favicon.svg`); the tab icon no longer shows the Astro default.
 
 ### Changed
 

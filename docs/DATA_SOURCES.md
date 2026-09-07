@@ -9,14 +9,21 @@ How **effiq** ingests model evidence, what auth each source needs, and how to en
 | **Artificial Analysis** | `src/lib/sources/artificial-analysis.ts` | Bundled `data/aa-catalog.json`, or local `AA_CATALOG_PATH`, or `ARTIFICIAL_ANALYSIS_API_KEY` for live refresh (when wired) | `data/aa-catalog.json` (bundled) or `AA_CATALOG_PATH`; run `npm run sync` |
 | **OpenRouter** | `src/lib/sources/openrouter.ts` | None for public `models/find` | Cache via `OPENROUTER_CACHE`; set `OPENROUTER_REFRESH=1` to refetch |
 | **Cursor** | `src/lib/sources/cursor.ts` | Bundled `data/cursor-models.csv`, or `CURSOR_MODELS_CSV` export; `CURSOR_API_KEY` only to regenerate CSV offline | `data/cursor-models.csv` (bundled) or `CURSOR_MODELS_CSV`; refreshed by `npm run sync:agent` |
-| **CursorBench** | `src/lib/sources/cursor.ts` | Bundled `data/cursorbench.json` from [CursorBench](https://cursor.com/cursorbench) | `data/cursorbench.json` (bundled); refreshed by `npm run sync:agent` |
+| **CursorBench** | `src/lib/sources/cursor.ts` | Bundled `data/cursorbench.json` from [CursorBench](https://cursor.com/cursorbench) | Manual snapshot per official release (page is JS-rendered; not agent-safe) |
 | **OpenCode Go** | `src/lib/sources/opencode-go.ts` | Bundled `data/opencode-go.json` from [OpenCode Go](https://opencode.ai/docs/go/) | `data/opencode-go.json` (bundled) or `OPENCODE_GO_JSON`; refreshed by `npm run sync:agent` |
 
-Website-sourced seeds (Cursor pricing, OpenCode Go, CursorBench) have no API.
-`scripts/agent_refresh.py` (`npm run sync:agent`) fetches the docs pages and
+Website-sourced seeds (Cursor pricing, OpenCode Go) have no API, but both docs
+sites serve machine-readable markdown at `.md` endpoints
+(`cursor.com/docs/models-and-pricing.md`, `opencode.ai/docs/go.md`).
+`scripts/agent_refresh.py` (`npm run sync:agent`) fetches that markdown and
 extracts rows with an OpenRouter chat model (temperature 0, JSON-only) into the
-seed files. Merges are update-only: prices/scores update in place, new models
-are appended, nothing is ever deleted, and `--dry-run` previews changes. It
+seed files. Merges are update-only: prices update in place, new models
+appended, nothing deleted. Guards: a minimum-row count rejects partial
+extractions, and fast-mode CSV rows only ever take prices from explicit
+`(Fast)` docs entries (never inherited standard prices); `--dry-run` previews
+changes. CursorBench is excluded by design (JS-rendered results page, values
+only in chart SVG coordinates — automated extraction confabulates rows), so
+`data/cursorbench.json` remains a manual snapshot per release. The refresh
 runs best-effort at the start of the daily sync workflow and skips cleanly when
 `OPENROUTER_API_KEY` is unset, so the matrix build always falls back to the
 bundled seeds. Pin the model with `REFRESH_MODEL` (default
