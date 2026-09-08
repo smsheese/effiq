@@ -26,7 +26,7 @@ The bucket must allow **public GET** (e.g. an R2 custom domain or r2.dev public 
 2. Select the repository and the `main` branch.
 3. Configure build settings:
    - **Framework preset:** `Astro`
-   - **Build command:** `npm run build`
+   - **Build command:** `npm run build` (runs `data:pull` first, downloading the current matrix from the bucket — requires the `PUBLIC_MATRIX_URL` build env variable)
    - **Build output directory:** `dist`
    - **Node.js version:** Set environment variable `NODE_VERSION = 22` (recommended).
 4. **Required build environment variable:**
@@ -74,6 +74,7 @@ Go to **Repo Settings** -> **Secrets and variables** -> **Actions**:
 | `AA_CATALOG_PATH` | Variable | Override path to AA catalog JSON (defaults to `data/aa-catalog.json`) |
 | `CURSOR_MODELS_CSV` | Variable | Override path to Cursor CSV (defaults to `data/cursor-models.csv`) |
 | `SITE_URL` | Pages env (not Actions secret) | Public origin for Cloudflare Pages builds |
+| `PUBLIC_MATRIX_URL` | Pages env (not Actions secret) | Public URL of `models-matrix.json` on the bucket; the Pages build pulls it before rendering — required or builds fail |
 
 ### Workflow permissions
 
