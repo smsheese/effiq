@@ -63,7 +63,7 @@ jobs:
           R2_PREFIX: ${{ vars.R2_PREFIX }}
         run: |
           set -euo pipefail
-          if [ -z "${R2_ACCOUNT_ID:-}" ] || [ -z "${R2_BUCKET:-}" ]; then
+          if [ -z "${AWS_ENDPOINT_URL:-}" ] || [ -z "${R2_BUCKET:-}" ]; then
             echo "::error::Missing R2 config — set repo variables R2_ACCOUNT_ID and R2_BUCKET and secrets R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY"
             exit 1
           fi
