@@ -33,12 +33,11 @@ const { compact = false } = Astro.props;
         Approximations have clear labels.
       </p>
       <p class="text-xs text-muted-foreground">
-        Model providers:
-        <a class="font-medium text-primary underline-offset-4 hover:underline" href="https://openrouter.ai" rel="noopener noreferrer">OpenRouter</a>,
-        <a class="font-medium text-primary underline-offset-4 hover:underline" href="https://cursor.com/docs/models-and-pricing" rel="noopener noreferrer">Cursor</a>,
-        and
+        Model providers:{" "}
+        <a class="font-medium text-primary underline-offset-4 hover:underline" href="https://openrouter.ai" rel="noopener noreferrer">OpenRouter</a>,{" "}
+        <a class="font-medium text-primary underline-offset-4 hover:underline" href="https://cursor.com/docs/models-and-pricing" rel="noopener noreferrer">Cursor</a>, and{" "}
         <a class="font-medium text-primary underline-offset-4 hover:underline" href="https://opencode.ai/docs/go/" rel="noopener noreferrer">OpenCode Go</a>
-        · Benchmarks:
+        {" "}· Benchmarks:{" "}
         <a class="font-medium text-primary underline-offset-4 hover:underline" href="https://artificialanalysis.ai" rel="noopener noreferrer">Artificial Analysis</a>
       </p>
     </div>
@@ -48,10 +47,9 @@ const { compact = false } = Astro.props;
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Pages</p>
         <ul class="space-y-2 text-sm">
           <li><a class="text-foreground transition-colors hover:text-primary" href="/">Explorer</a></li>
-          <li><a class="text-foreground transition-colors hover:text-primary" href="/methodology/">Methodology</a></li>
+          <li><a class="text-foreground transition-colors hover:text-primary" href="/subscriptions/">Subscriptions</a></li>
           <li><a class="text-foreground transition-colors hover:text-primary" href="/about/">About</a></li>
-          <li><a class="text-foreground transition-colors hover:text-primary" href="/api/models.json">models.json</a></li>
-          <li><a class="text-foreground transition-colors hover:text-primary" href="/api/models.csv">models.csv</a></li>
+          <li><button type="button" class="text-foreground transition-colors hover:text-primary" data-tally-open="1AeRVl" data-tally-align-left="1" data-tally-emoji-text="👋" data-tally-emoji-animation="wave" data-tally-auto-close="2000">Feedback</button></li>
         </ul>
       </div>
       <div class="space-y-3">
@@ -67,9 +65,9 @@ const { compact = false } = Astro.props;
   </div>
   <div class:list={["mx-auto flex flex-wrap items-center justify-between gap-2 border-t border-border/80 px-4 py-4 text-xs text-muted-foreground", compact ? "max-w-3xl" : "max-w-[1500px]"]}>
     <span>
-      MIT © 2026
+      MIT © 2026{" "}
       <a class="font-medium text-primary underline-offset-4 hover:underline" href="/about/">smsheese</a>
-      · <a class="underline-offset-4 hover:underline" href="https://github.com/smsheese/effiq" rel="noopener noreferrer">GitHub</a>
+      {" "}· <a class="underline-offset-4 hover:underline" href="https://github.com/smsheese/effiq" rel="noopener noreferrer">GitHub</a>
     </span>
     <span class="font-mono">v0.2.0</span>
   </div>

@@ -1,0 +1,765 @@
+{
+  "observedAt": "2026-09-08T00:00:00.000Z",
+  "plans": [
+    {
+      "id": "claude-pro",
+      "provider": "Claude",
+      "name": "Claude Pro",
+      "monthlyUsd": 20,
+      "annualUsdPerMo": 17,
+      "bucket": "upto-20",
+      "source": "claude_subscription",
+      "sourceUrl": "https://claude.com/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": true,
+      "codexAccess": "none",
+      "modelFamilies": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "claude-4-5-haiku"
+      ],
+      "capacity": {
+        "unit": "weekly_hours",
+        "low": 40,
+        "high": 80,
+        "basis": "official",
+        "ref": "Sonnet-equiv hrs/wk",
+        "note": "Anthropic: most Pro users can expect 40-80h of Sonnet/week. Fable limited to 50% of weekly limits (credits only)."
+      },
+      "usageWindow5h": "At least 5x Free usage per 5-hour session",
+      "weeklyLimit": "40-80 Sonnet-equiv hrs/wk (official); separate Opus weekly cap",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Includes Claude Code, Cowork, Design, Science. All usage shares one pool across web, desktop, mobile, and Code. Bursty users hit the 5h window before the weekly cap (community reports).",
+      "portability": {
+        "level": "harness_locked",
+        "tools": "Claude Code, Claude Cowork, Claude Agent SDK (official Anthropic surfaces only)",
+        "riskNote": "Anthropic ToS bans subscription auth in unapproved third-party harnesses and CLIs — accounts get rate-limited or banned. Use API keys for other tools."
+      }
+    },
+    {
+      "id": "claude-max-5x",
+      "provider": "Claude",
+      "name": "Claude Max 5x",
+      "monthlyUsd": 100,
+      "annualUsdPerMo": null,
+      "bucket": "upto-100",
+      "source": "claude_subscription",
+      "sourceUrl": "https://claude.com/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": true,
+      "codexAccess": "none",
+      "modelFamilies": [
+        "claude-fable-5-1",
+        "claude-opus-5",
+        "claude-sonnet-5"
+      ],
+      "capacity": {
+        "unit": "weekly_hours",
+        "low": 140,
+        "high": 280,
+        "basis": "official",
+        "ref": "Sonnet-equiv hrs/wk",
+        "note": "Anthropic: most Max 5x users 140-280h Sonnet plus 15-35h Opus per week."
+      },
+      "usageWindow5h": "5x Pro usage per 5-hour session",
+      "weeklyLimit": "140-280 Sonnet + 15-35 Opus hrs/wk (official); priority access",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Billed monthly. For all-day Claude Code sessions. Fable burns ~2x Opus (community N=1 reports: a heavy Fable day can eat a week's Fable credits).",
+      "portability": {
+        "level": "harness_locked",
+        "tools": "Claude Code, Claude Cowork, Claude Agent SDK (official Anthropic surfaces only)",
+        "riskNote": "Anthropic ToS bans subscription auth in unapproved third-party harnesses and CLIs — accounts get rate-limited or banned. Use API keys for other tools."
+      }
+    },
+    {
+      "id": "claude-max-20x",
+      "provider": "Claude",
+      "name": "Claude Max 20x",
+      "monthlyUsd": 200,
+      "annualUsdPerMo": null,
+      "bucket": "over-100",
+      "source": "claude_subscription",
+      "sourceUrl": "https://claude.com/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": true,
+      "codexAccess": "none",
+      "modelFamilies": [
+        "claude-fable-5-1",
+        "claude-opus-5",
+        "claude-sonnet-5"
+      ],
+      "capacity": {
+        "unit": "weekly_hours",
+        "low": 560,
+        "high": 1120,
+        "basis": "derived",
+        "ref": "Sonnet-equiv hrs/wk",
+        "note": "4x Max 5x by the 20x/5x tier ratio; effectively uncapped for single humans, binds on 24/7 multi-agent loops."
+      },
+      "usageWindow5h": "20x Pro usage per 5-hour session",
+      "weeklyLimit": "~4x Max 5x by tier ratio (derived); priority access",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Billed monthly. Top individual tier for heavy agent coding and parallel instances.",
+      "portability": {
+        "level": "harness_locked",
+        "tools": "Claude Code, Claude Cowork, Claude Agent SDK (official Anthropic surfaces only)",
+        "riskNote": "Anthropic ToS bans subscription auth in unapproved third-party harnesses and CLIs — accounts get rate-limited or banned. Use API keys for other tools."
+      }
+    },
+    {
+      "id": "chatgpt-plus",
+      "provider": "ChatGPT",
+      "name": "ChatGPT Plus",
+      "monthlyUsd": 20,
+      "annualUsdPerMo": null,
+      "bucket": "upto-20",
+      "source": "chatgpt_subscription",
+      "sourceUrl": "https://developers.openai.com/codex/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "expanded",
+      "modelFamilies": [
+        "gpt-5-6-sol",
+        "gpt-5-6-terra",
+        "gpt-5-6-luna"
+      ],
+      "capacity": {
+        "unit": "session_messages",
+        "low": 10,
+        "high": 100,
+        "basis": "official",
+        "ref": "Sol local msgs/5h",
+        "note": "Official Codex pricing: Plus Sol 10-100 msgs/5h; Terra 25-200, Luna 250-2000 stretch further. Weekly limits may also apply (amounts unpublished)."
+      },
+      "usageWindow5h": "10-100 Sol msgs/5h; Terra 25-200, Luna 250-2000 (official)",
+      "weeklyLimit": "Weekly limits may also apply (amounts unpublished)",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "OpenAI positions Plus as 'a few focused coding sessions each week'. Credits can extend usage past the allowance. No annual billing.",
+      "portability": {
+        "level": "open",
+        "tools": "Codex CLI, Codex IDE extension, ChatGPT desktop; 'sign in with ChatGPT' works in many third-party agent tools",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "chatgpt-pro-100",
+      "provider": "ChatGPT",
+      "name": "ChatGPT Pro 100",
+      "monthlyUsd": 100,
+      "annualUsdPerMo": null,
+      "bucket": "upto-100",
+      "source": "chatgpt_subscription",
+      "sourceUrl": "https://developers.openai.com/codex/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "maximum",
+      "modelFamilies": [
+        "gpt-6-astra",
+        "gpt-5-6-sol",
+        "gpt-5-6-terra"
+      ],
+      "capacity": {
+        "unit": "session_messages",
+        "low": 50,
+        "high": 500,
+        "basis": "official",
+        "ref": "Sol local msgs/5h",
+        "note": "Official: 5x Plus allowances. GPT-6 Pro chat allowance is a separate shared 50 msgs/wk pool."
+      },
+      "usageWindow5h": "50-500 Sol msgs/5h (5x Plus, official)",
+      "weeklyLimit": "Weekly limits may also apply (amounts unpublished)",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "New $100 tier (official help center): 5x Plus usage with full Astra access. No annual billing.",
+      "portability": {
+        "level": "open",
+        "tools": "Codex CLI, Codex IDE extension, ChatGPT desktop; 'sign in with ChatGPT' works in many third-party agent tools",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "chatgpt-pro",
+      "provider": "ChatGPT",
+      "name": "ChatGPT Pro 20x",
+      "monthlyUsd": 200,
+      "annualUsdPerMo": null,
+      "bucket": "over-100",
+      "source": "chatgpt_subscription",
+      "sourceUrl": "https://developers.openai.com/codex/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "maximum",
+      "modelFamilies": [
+        "gpt-6-astra",
+        "gpt-5-6-sol",
+        "gpt-5-6-terra"
+      ],
+      "capacity": {
+        "unit": "session_messages",
+        "low": 200,
+        "high": 2000,
+        "basis": "official",
+        "ref": "Sol local msgs/5h",
+        "note": "Official: 20x Plus allowances. GPT-6 Pro chat allowance is a separate 200 msgs/wk pool; unlimited desktop voice (tasks still draw Codex budget)."
+      },
+      "usageWindow5h": "200-2000 Sol msgs/5h (20x Plus, official)",
+      "weeklyLimit": "Weekly limits may also apply (amounts unpublished)",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Top ChatGPT tier plus Spark research preview. When capped, Chat falls back to weaker models automatically. No annual billing.",
+      "portability": {
+        "level": "open",
+        "tools": "Codex CLI, Codex IDE extension, ChatGPT desktop; 'sign in with ChatGPT' works in many third-party agent tools",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "chatgpt-business",
+      "provider": "ChatGPT",
+      "name": "ChatGPT Business",
+      "monthlyUsd": 25,
+      "annualUsdPerMo": 20,
+      "bucket": "upto-50",
+      "source": "chatgpt_subscription",
+      "sourceUrl": "https://developers.openai.com/codex/pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "expanded",
+      "modelFamilies": [
+        "gpt-5-6-sol",
+        "gpt-5-6-terra",
+        "gpt-5-6-luna"
+      ],
+      "capacity": {
+        "unit": "session_messages",
+        "low": 10,
+        "high": 100,
+        "basis": "official",
+        "ref": "Sol local msgs/5h (Standard)",
+        "note": "Official: Standard seats match Plus allowances; higher business tiers run ~Pro 5x. GPT-6 Pro chat: 15 msgs/mo shared (Standard) vs 50/wk shared (Premium)."
+      },
+      "usageWindow5h": "Plus-level Codex allowance on Standard; higher tiers ~Pro 5x (official)",
+      "weeklyLimit": "Admin controls; workspace credits can extend access",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Per seat: $20/mo billed annually ($25 monthly). Minimum 2 seats. SSO, admin controls, no training on business data.",
+      "portability": {
+        "level": "open",
+        "tools": "Codex CLI, Codex IDE extension, ChatGPT desktop; 'sign in with ChatGPT' works in many third-party agent tools",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "cursor-pro",
+      "provider": "Cursor",
+      "name": "Cursor Pro",
+      "monthlyUsd": 20,
+      "annualUsdPerMo": null,
+      "bucket": "upto-20",
+      "source": "cursor_subscription",
+      "sourceUrl": "https://cursor.com/docs/models-and-pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Cursor Agent + Tab",
+      "modelFamilies": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "grok-4-6",
+        "grok-4-5",
+        "composer-2-5"
+      ],
+      "burnFamilies": [
+        "grok-4-5",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 20,
+        "high": 20,
+        "basis": "community",
+        "ref": "API-value $/mo included",
+        "note": "Usage-based pools billed at API rates; community consensus is included value ~= fee. Cursor Models pool (Grok/Composer) stretches further than third-party models."
+      },
+      "usageWindow5h": "No 5h window; monthly pools (Cursor Models + Other Models)",
+      "weeklyLimit": "Monthly included usage; on-demand top-up at API rates",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Unlimited tab completions, Bugbot, Cloud Agents. Best when you live in Grok/Composer; Opus-heavy use burns the $20 pool fast.",
+      "portability": {
+        "level": "vendor_tools_only",
+        "tools": "Cursor IDE, Cursor CLI, Cursor Cloud Agents — the harness is Cursor's own",
+        "riskNote": "Subscription can't drive other agent harnesses; for other tools you'd pay per-token elsewhere."
+      }
+    },
+    {
+      "id": "cursor-pro-plus",
+      "provider": "Cursor",
+      "name": "Cursor Pro Plus",
+      "monthlyUsd": 60,
+      "annualUsdPerMo": null,
+      "bucket": "upto-100",
+      "source": "cursor_subscription",
+      "sourceUrl": "https://cursor.com/docs/models-and-pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Cursor Agent + Tab",
+      "modelFamilies": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "grok-4-6",
+        "grok-4-5",
+        "composer-2-5"
+      ],
+      "burnFamilies": [
+        "grok-4-5",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 60,
+        "high": 60,
+        "basis": "community",
+        "ref": "API-value $/mo included",
+        "note": "3x Pro agent limits. Docs guidance: daily agent users typically land at $60-100/mo total usage, so Pro Plus matches real daily-driver spend."
+      },
+      "usageWindow5h": "No 5h window; monthly pools (Cursor Models + Other Models)",
+      "weeklyLimit": "Monthly included usage; on-demand top-up at API rates",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "The natural tier for daily agent coding on mixed models.",
+      "portability": {
+        "level": "vendor_tools_only",
+        "tools": "Cursor IDE, Cursor CLI, Cursor Cloud Agents — the harness is Cursor's own",
+        "riskNote": "Subscription can't drive other agent harnesses; for other tools you'd pay per-token elsewhere."
+      }
+    },
+    {
+      "id": "cursor-ultra",
+      "provider": "Cursor",
+      "name": "Cursor Ultra",
+      "monthlyUsd": 200,
+      "annualUsdPerMo": null,
+      "bucket": "over-100",
+      "source": "cursor_subscription",
+      "sourceUrl": "https://cursor.com/docs/models-and-pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Cursor Agent + Tab",
+      "modelFamilies": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "grok-4-6",
+        "grok-4-5",
+        "composer-2-5"
+      ],
+      "burnFamilies": [
+        "grok-4-5",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 200,
+        "high": 200,
+        "basis": "community",
+        "ref": "API-value $/mo included",
+        "note": "20x Pro agent limits. Docs: power users with multiple agents/automation often run $200+/mo total usage."
+      },
+      "usageWindow5h": "No 5h window; monthly pools (Cursor Models + Other Models)",
+      "weeklyLimit": "Monthly included usage; priority access to new features",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "For agent power users and multi-agent/automation workloads.",
+      "portability": {
+        "level": "vendor_tools_only",
+        "tools": "Cursor IDE, Cursor CLI, Cursor Cloud Agents — the harness is Cursor's own",
+        "riskNote": "Subscription can't drive other agent harnesses; for other tools you'd pay per-token elsewhere."
+      }
+    },
+    {
+      "id": "cursor-teams-standard",
+      "provider": "Cursor",
+      "name": "Cursor Teams Standard",
+      "monthlyUsd": 40,
+      "annualUsdPerMo": 40,
+      "bucket": "upto-50",
+      "source": "cursor_subscription",
+      "sourceUrl": "https://cursor.com/docs/models-and-pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Cursor Agent + Tab",
+      "modelFamilies": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "grok-4-6",
+        "grok-4-5",
+        "composer-2-5"
+      ],
+      "burnFamilies": [
+        "grok-4-5",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 40,
+        "high": 40,
+        "basis": "community",
+        "ref": "API-value $/mo/seat included",
+        "note": "Per-seat pool. Third-party requests add a $0.25/M Cursor Token Rate on top of API pricing (official)."
+      },
+      "usageWindow5h": "Per-seat monthly pool; centralized billing and admin",
+      "weeklyLimit": "Team marketplace, Bugbot reviews, usage analytics, SSO",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Per seat per month. Cursor Router picks models per Auto request on Teams.",
+      "portability": {
+        "level": "vendor_tools_only",
+        "tools": "Cursor IDE, Cursor CLI, Cursor Cloud Agents — the harness is Cursor's own",
+        "riskNote": "Subscription can't drive other agent harnesses; for other tools you'd pay per-token elsewhere."
+      }
+    },
+    {
+      "id": "cursor-teams-premium",
+      "provider": "Cursor",
+      "name": "Cursor Teams Premium",
+      "monthlyUsd": 120,
+      "annualUsdPerMo": 120,
+      "bucket": "over-100",
+      "source": "cursor_subscription",
+      "sourceUrl": "https://cursor.com/docs/models-and-pricing",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Cursor Agent + Tab",
+      "modelFamilies": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "grok-4-6",
+        "grok-4-5",
+        "composer-2-5"
+      ],
+      "burnFamilies": [
+        "grok-4-5",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 120,
+        "high": 120,
+        "basis": "community",
+        "ref": "API-value $/mo/seat included",
+        "note": "5x Standard agent limits. Third-party requests add a $0.25/M Cursor Token Rate on top of API pricing (official)."
+      },
+      "usageWindow5h": "Per-seat monthly pool; centralized billing and admin",
+      "weeklyLimit": "Team marketplace, Bugbot reviews, usage analytics, SSO",
+      "overageCredits": true,
+      "priceStatus": "measured",
+      "quotaStatus": "estimated",
+      "notes": "Per seat per month for heavy team agent use.",
+      "portability": {
+        "level": "vendor_tools_only",
+        "tools": "Cursor IDE, Cursor CLI, Cursor Cloud Agents — the harness is Cursor's own",
+        "riskNote": "Subscription can't drive other agent harnesses; for other tools you'd pay per-token elsewhere."
+      }
+    },
+    {
+      "id": "openrouter-20",
+      "provider": "OpenRouter",
+      "name": "OpenRouter $20 budget",
+      "monthlyUsd": 20,
+      "annualUsdPerMo": null,
+      "bucket": "upto-20",
+      "source": "openrouter",
+      "sourceUrl": "https://openrouter.ai/models",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Pay per token",
+      "modelFamilies": [
+        "claude-fable-5-1",
+        "gpt-6-astra",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "gpt-5-6-luna"
+      ],
+      "burnFamilies": [
+        "gpt-5-6-luna",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 20,
+        "high": 20,
+        "basis": "derived",
+        "ref": "API-value $/mo budget",
+        "note": "Budget tier, not a subscription: $20 of pay-as-you-go spend buys $20 of API value. No windows, no caps beyond spend."
+      },
+      "usageWindow5h": "No windows; pure metered",
+      "weeklyLimit": "Spend-capped only; pick any model per task",
+      "overageCredits": false,
+      "priceStatus": "estimated",
+      "quotaStatus": "estimated",
+      "notes": "Budget comparison tier: what $20/mo buys at market per-token rates. Burn range spans Luna-class to Opus-class models.",
+      "portability": {
+        "level": "open",
+        "tools": "Any OpenAI-compatible tool via API key (agents, CLIs, IDEs, scripts)",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "openrouter-50",
+      "provider": "OpenRouter",
+      "name": "OpenRouter $50 budget",
+      "monthlyUsd": 50,
+      "annualUsdPerMo": null,
+      "bucket": "upto-50",
+      "source": "openrouter",
+      "sourceUrl": "https://openrouter.ai/models",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Pay per token",
+      "modelFamilies": [
+        "claude-fable-5-1",
+        "gpt-6-astra",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "gpt-5-6-luna"
+      ],
+      "burnFamilies": [
+        "gpt-5-6-luna",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 50,
+        "high": 50,
+        "basis": "derived",
+        "ref": "API-value $/mo budget",
+        "note": "Budget tier, not a subscription: $50 of pay-as-you-go spend buys $50 of API value. No windows, no caps beyond spend."
+      },
+      "usageWindow5h": "No windows; pure metered",
+      "weeklyLimit": "Spend-capped only; pick any model per task",
+      "overageCredits": false,
+      "priceStatus": "estimated",
+      "quotaStatus": "estimated",
+      "notes": "Budget comparison tier: what $50/mo buys at market per-token rates. Burn range spans Luna-class to Opus-class models.",
+      "portability": {
+        "level": "open",
+        "tools": "Any OpenAI-compatible tool via API key (agents, CLIs, IDEs, scripts)",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "openrouter-100",
+      "provider": "OpenRouter",
+      "name": "OpenRouter $100 budget",
+      "monthlyUsd": 100,
+      "annualUsdPerMo": null,
+      "bucket": "upto-100",
+      "source": "openrouter",
+      "sourceUrl": "https://openrouter.ai/models",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Pay per token",
+      "modelFamilies": [
+        "claude-fable-5-1",
+        "gpt-6-astra",
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "gpt-5-6-luna"
+      ],
+      "burnFamilies": [
+        "gpt-5-6-luna",
+        "claude-sonnet-5",
+        "claude-opus-5"
+      ],
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 100,
+        "high": 100,
+        "basis": "derived",
+        "ref": "API-value $/mo budget",
+        "note": "Budget tier, not a subscription: $100 of pay-as-you-go spend buys $100 of API value. No windows, no caps beyond spend."
+      },
+      "usageWindow5h": "No windows; pure metered",
+      "weeklyLimit": "Spend-capped only; pick any model per task",
+      "overageCredits": false,
+      "priceStatus": "estimated",
+      "quotaStatus": "estimated",
+      "notes": "Budget comparison tier: what $100/mo buys at market per-token rates. Burn range spans Luna-class to Opus-class models.",
+      "portability": {
+        "level": "open",
+        "tools": "Any OpenAI-compatible tool via API key (agents, CLIs, IDEs, scripts)",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "opencode-20",
+      "provider": "OpenCode Go",
+      "name": "OpenCode Go $20",
+      "monthlyUsd": 20,
+      "annualUsdPerMo": null,
+      "bucket": "upto-20",
+      "source": "opencode",
+      "sourceUrl": "https://opencode.ai/docs/go/",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Zen credits",
+      "modelFamilies": [
+        "grok-4-6",
+        "gpt-5-6-luna",
+        "glm-5-3-flash",
+        "kimi-k2-7-code",
+        "deepseek-v4-flash",
+        "longcat-2-0"
+      ],
+      "burnFamilies": [
+        "glm-5-3-flash",
+        "gpt-5-6-luna",
+        "grok-4-6"
+      ],
+      "tariffChannel": "opencode",
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 10,
+        "high": 10,
+        "basis": "derived",
+        "ref": "Zen credits $/mo usable",
+        "note": "$10/mo membership plus $10 Zen credits. Burn priced at published Zen per-token rates."
+      },
+      "usageWindow5h": "No windows; credit-metered",
+      "weeklyLimit": "Credit-capped only; open coding models via Zen",
+      "overageCredits": false,
+      "priceStatus": "estimated",
+      "quotaStatus": "estimated",
+      "notes": "$20 total = $10 membership + $10 credits. Verdict compares usable credits against burn at Zen rates.",
+      "portability": {
+        "level": "open",
+        "tools": "Any tool via OpenCode Zen OpenAI-compatible endpoints (chat/completions, responses, messages)",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "opencode-50",
+      "provider": "OpenCode Go",
+      "name": "OpenCode Go $50",
+      "monthlyUsd": 50,
+      "annualUsdPerMo": null,
+      "bucket": "upto-50",
+      "source": "opencode",
+      "sourceUrl": "https://opencode.ai/docs/go/",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Zen credits",
+      "modelFamilies": [
+        "grok-4-6",
+        "gpt-5-6-luna",
+        "glm-5-3-flash",
+        "kimi-k2-7-code",
+        "deepseek-v4-flash",
+        "longcat-2-0"
+      ],
+      "burnFamilies": [
+        "glm-5-3-flash",
+        "gpt-5-6-luna",
+        "grok-4-6"
+      ],
+      "tariffChannel": "opencode",
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 40,
+        "high": 40,
+        "basis": "derived",
+        "ref": "Zen credits $/mo usable",
+        "note": "$10/mo membership plus $40 Zen credits. Burn priced at published Zen per-token rates."
+      },
+      "usageWindow5h": "No windows; credit-metered",
+      "weeklyLimit": "Credit-capped only; open coding models via Zen",
+      "overageCredits": false,
+      "priceStatus": "estimated",
+      "quotaStatus": "estimated",
+      "notes": "$50 total = $10 membership + $40 credits. Verdict compares usable credits against burn at Zen rates.",
+      "portability": {
+        "level": "open",
+        "tools": "Any tool via OpenCode Zen OpenAI-compatible endpoints (chat/completions, responses, messages)",
+        "riskNote": null
+      }
+    },
+    {
+      "id": "opencode-100",
+      "provider": "OpenCode Go",
+      "name": "OpenCode Go $100",
+      "monthlyUsd": 100,
+      "annualUsdPerMo": null,
+      "bucket": "upto-100",
+      "source": "opencode",
+      "sourceUrl": "https://opencode.ai/docs/go/",
+      "observedAt": "2026-09-08T00:00:00.000Z",
+      "includesClaudeCode": false,
+      "codexAccess": "none",
+      "accessLabel": "Zen credits",
+      "modelFamilies": [
+        "grok-4-6",
+        "gpt-5-6-luna",
+        "glm-5-3-flash",
+        "kimi-k2-7-code",
+        "deepseek-v4-flash",
+        "longcat-2-0"
+      ],
+      "burnFamilies": [
+        "glm-5-3-flash",
+        "gpt-5-6-luna",
+        "grok-4-6"
+      ],
+      "tariffChannel": "opencode",
+      "capacity": {
+        "unit": "monthly_usd",
+        "low": 90,
+        "high": 90,
+        "basis": "derived",
+        "ref": "Zen credits $/mo usable",
+        "note": "$10/mo membership plus $90 Zen credits. Burn priced at published Zen per-token rates."
+      },
+      "usageWindow5h": "No windows; credit-metered",
+      "weeklyLimit": "Credit-capped only; open coding models via Zen",
+      "overageCredits": false,
+      "priceStatus": "estimated",
+      "quotaStatus": "estimated",
+      "notes": "$100 total = $10 membership + $90 credits. Verdict compares usable credits against burn at Zen rates.",
+      "portability": {
+        "level": "open",
+        "tools": "Any tool via OpenCode Zen OpenAI-compatible endpoints (chat/completions, responses, messages)",
+        "riskNote": null
+      }
+    }
+  ]
+}

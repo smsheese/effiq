@@ -9,6 +9,12 @@ Pages (not APIs) are the source of truth for:
      -> data/cursor-models.csv  (price columns only, rows never added/deleted)
   2. OpenCode Go models/prices (https://opencode.ai/docs/go/)
      -> data/opencode-go.json   (prices merged by modelId, new models appended)
+  3. Claude subscriptions      (https://claude.com/pricing)
+     -> data/subscription-plans.json (monthly/annual list prices only,
+        claude-* ids; opt in with --only claude_sub)
+  4. ChatGPT subscriptions     (https://openai.com/chatgpt/pricing/)
+     -> manual only (prices render client-side; auto-refresh disabled
+        like CursorBench to avoid confabulated dollar amounts)
 
   CursorBench (https://cursor.com/cursorbench) is intentionally NOT refreshed
   here: the page is a JS app with results baked into chart SVG, so automated
@@ -50,13 +56,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 SOURCES = {
     "cursor": {
-        # Docs sites serve clean markdown at ".md" — the HTML page is a JS app.
+        # The ".md" endpoint 404s (verified 2026-09-08); the HTML docs page
+        # serves the same pricing tables and strips to extractable text.
         "url": os.environ.get(
             "CURSOR_DOCS_MD_URL",
-            "https://cursor.com/docs/models-and-pricing.md",
+            "https://cursor.com/docs/models-and-pricing",
         ),
         "seed": os.path.join(ROOT, "data", "cursor-models.csv"),
-        "format": "markdown",
+        "format": "html",
         # Static docs tables: safe for LLM extraction. Merges apply only
         # when at least this many rows come back (guards partial pages).
         "min_rows": 30,
@@ -78,6 +85,33 @@ SOURCES = {
         # official releases until Cursor ships a machine-readable table/API.
         "min_rows": 0,
         "auto": False,
+    },
+    "claude_sub": {
+        # Static pricing page: list prices extract cleanly.
+        "url": os.environ.get(
+            "CLAUDE_PRICING_MD_URL",
+            "https://claude.com/pricing.md",
+        ),
+        "seed": os.path.join(ROOT, "data", "subscription-plans.json"),
+        "format": "markdown",
+        # Guard: Pro + Max 5x + Max 20x must all come back.
+        "min_rows": 3,
+        "id_prefix": "claude-",
+    },
+    "chatgpt_sub": {
+        "url": os.environ.get(
+            "CHATGPT_PRICING_MD_URL",
+            "https://openai.com/chatgpt/pricing/",
+        ),
+        "seed": os.path.join(ROOT, "data", "subscription-plans.json"),
+        "format": "html",
+        # Disabled by default: prices render client-side, so static fetches
+        # show tier names without numbers — automated extraction confabulates
+        # dollar amounts. Verify prices by hand from official releases.
+        # Opt in explicitly with --only chatgpt_sub after checking output.
+        "min_rows": 3,
+        "auto": False,
+        "id_prefix": "chatgpt-",
     },
 }
 
@@ -116,6 +150,20 @@ EXTRACT_PROMPTS = {
         '"cost_usd": <number|null>, "tokens": <number|null>, '
         '"steps": <number|null>}]}. '
         "Include every ranked model. Omit rows missing a score.\n\nPAGE TEXT:\n"
+    ),
+    "claude_sub": (
+        "From the page text below, extract Claude subscription list prices. Reply ONLY: "
+        '{"rows": [{"id": "<claude-pro|claude-max-5x|claude-max-20x>", '
+        '"monthly": <number>, "annual_per_mo": <number|null>}]}. '
+        "Use the individual Pro and Max 5x / Max 20x tiers only. "
+        "Never invent prices not stated in the page text.\n\nPAGE TEXT:\n"
+    ),
+    "chatgpt_sub": (
+        "From the page text below, extract ChatGPT subscription list prices. Reply ONLY: "
+        '{"rows": [{"id": "<chatgpt-plus|chatgpt-pro|chatgpt-business>", '
+        '"monthly": <number>, "annual_per_mo": <number|null>}]}. '
+        "chatgpt-business is per seat per month. "
+        "Never invent prices not stated in the page text.\n\nPAGE TEXT:\n"
     ),
 }
 
@@ -348,6 +396,89 @@ def refresh_opencode_json(seed_path: str, rows: list[dict], dry_run: bool) -> di
     return {"status": "ok", "updated": updated, "added": added, "dry_run": dry_run}
 
 
+# ------------------------------------------------------- subscription JSON
+
+
+VALID_SUB_IDS = {
+    "claude-pro",
+    "claude-max-5x",
+    "claude-max-20x",
+    "chatgpt-plus",
+    "chatgpt-pro-100",
+    "chatgpt-pro",
+    "chatgpt-business",
+    "cursor-pro",
+    "cursor-pro-plus",
+    "cursor-ultra",
+    "cursor-teams-standard",
+    "cursor-teams-premium",
+    "openrouter-20",
+    "openrouter-50",
+    "openrouter-100",
+    "opencode-20",
+    "opencode-50",
+    "opencode-100",
+}
+
+
+def refresh_subscription_json(
+    seed_path: str, rows: list[dict], dry_run: bool, id_prefix: str = ""
+) -> dict:
+    """Update-only price merge for data/subscription-plans.json.
+
+    Only monthly/annual list prices move; quotas, notes, and labels never
+    change here. Buckets re-derive from the price so a price move can never
+    silently desync the $20/$50/$100 tiers (sync.ts re-validates anyway).
+    """
+    if not rows:
+        return {"status": "skipped", "reason": "no rows extracted"}
+    with open(seed_path, "r", encoding="utf-8") as f:
+        catalog = json.load(f)
+    by_id = {r.get("id"): r for r in catalog.get("plans", [])}
+    updated = 0
+    for r in rows:
+        pid = r.get("id")
+        if not isinstance(pid, str) or pid not in VALID_SUB_IDS:
+            continue
+        if id_prefix and not pid.startswith(id_prefix):
+            continue
+        monthly = r.get("monthly")
+        annual = r.get("annual_per_mo")
+        if not isinstance(monthly, (int, float)) or monthly < 0 or monthly > 2000:
+            continue
+        if annual is not None and (
+            not isinstance(annual, (int, float)) or annual < 0 or annual > 2000
+        ):
+            continue
+        existing = by_id.get(pid)
+        if existing is None:
+            continue  # never add plans here; seed membership is curated
+        changed = False
+        if existing.get("monthlyUsd") != monthly:
+            existing["monthlyUsd"] = monthly
+            if monthly <= 20:
+                existing["bucket"] = "upto-20"
+            elif monthly <= 50:
+                existing["bucket"] = "upto-50"
+            elif monthly <= 100:
+                existing["bucket"] = "upto-100"
+            else:
+                existing["bucket"] = "over-100"
+            changed = True
+        if annual is not None and existing.get("annualUsdPerMo") != annual:
+            existing["annualUsdPerMo"] = annual
+            changed = True
+        if changed:
+            updated += 1
+    if updated:
+        catalog["observedAt"] = now_iso()
+        if not dry_run:
+            with open(seed_path, "w", encoding="utf-8") as f:
+                json.dump(catalog, f, indent=2)
+                f.write("\n")
+    return {"status": "ok", "updated": updated, "dry_run": dry_run}
+
+
 # ---------------------------------------------------------------- bench JSON
 
 
@@ -411,6 +542,14 @@ REFRESHERS = {
     ),
     "bench": lambda seed, data, dry: refresh_bench_json(
         seed, data.get("benchmark"), data.get("rows", []), dry
+    ),
+    "claude_sub": lambda seed, data, dry: refresh_subscription_json(
+        seed, data.get("rows", []), dry,
+        SOURCES["claude_sub"].get("id_prefix", ""),
+    ),
+    "chatgpt_sub": lambda seed, data, dry: refresh_subscription_json(
+        seed, data.get("rows", []), dry,
+        SOURCES["chatgpt_sub"].get("id_prefix", ""),
     ),
 }
 
@@ -505,6 +644,40 @@ def self_test() -> int:
           res.get("updated") == 1 and res.get("added") == 1)
     check("opencode dry-run writes nothing",
           json.load(open(go_path, encoding="utf-8")) == before)
+
+    # subscription JSON merge (prices only, buckets re-derived, never adds)
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".json", delete=False, encoding="utf-8"
+    ) as f:
+        json.dump(
+            {"observedAt": "old",
+             "plans": [{"id": "claude-pro", "provider": "Claude",
+                        "name": "Claude Pro", "monthlyUsd": 20,
+                        "annualUsdPerMo": 17, "bucket": "upto-20",
+                        "source": "claude_subscription",
+                        "sourceUrl": "u", "observedAt": "old",
+                        "includesClaudeCode": True, "codexAccess": "none",
+                        "usageWindow5h": None, "weeklyLimit": None,
+                        "overageCredits": True, "priceStatus": "measured",
+                        "quotaStatus": "estimated", "notes": None}]},
+            f,
+        )
+        sub_path = f.name
+    res = refresh_subscription_json(
+        sub_path,
+        [{"id": "claude-pro", "monthly": 25, "annual_per_mo": 20},
+         {"id": "brand-new-plan", "monthly": 5, "annual_per_mo": None}],
+        dry_run=True, id_prefix="claude-",
+    )
+    check("subscriptions update price + re-derive bucket", res.get("updated") == 1)
+    check("subscriptions dry-run writes nothing",
+          json.load(open(sub_path, encoding="utf-8"))["plans"][0]["monthlyUsd"] == 20)
+    res = refresh_subscription_json(
+        sub_path,
+        [{"id": "chatgpt-plus", "monthly": 20, "annual_per_mo": None}],
+        dry_run=True, id_prefix="claude-",
+    )
+    check("subscriptions ignore other-provider ids", res.get("updated") == 0)
 
     # bench JSON merge (update in place, add new, keep rest)
     with tempfile.NamedTemporaryFile(

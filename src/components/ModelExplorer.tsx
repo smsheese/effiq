@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CompareDrawer } from "@/components/CompareDrawer";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -51,11 +52,16 @@ import {
   ChevronUp,
   CircleHelp,
   Download,
+  GitCompareArrows,
   Lock,
   LockOpen,
+  Mail,
+  Pin,
+  PinOff,
   RefreshCw,
   Search,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { getModelParent } from "@/lib/parents";
 
@@ -127,6 +133,7 @@ const WEIGHT_KEYS = [
 type WeightKey = (typeof WEIGHT_KEYS)[number];
 
 const MAX_LOCKED = 4;
+const MAX_COMPARE = 5;
 
 function weightsMatch(a: MetricWeights, b: MetricWeights, eps = 0.01): boolean {
   return WEIGHT_KEYS.every((k) => Math.abs(a[k] - b[k]) <= eps);
@@ -203,7 +210,7 @@ function statusBadge(status: string | undefined) {
   return <Badge variant="outline" className="text-[10px] text-muted-foreground">Unknown</Badge>;
 }
 
-function ScoreBar({ value, max = 100 }: { value: number | null; max?: number }) {
+function ScoreBar({ value, max = 100, tone }: { value: number | null; max?: number; tone?: string }) {
   if (value == null) return <span className="text-muted-foreground">—</span>;
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
@@ -211,9 +218,119 @@ function ScoreBar({ value, max = 100 }: { value: number | null; max?: number }) 
       <span className="h-1.5 w-12 overflow-hidden rounded-full bg-muted">
         <span className="block h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
       </span>
-      <span className="tabular-nums text-sm">{value.toFixed(1)}</span>
+      <span className="tabular-nums text-sm" style={tone ? { color: tone } : undefined}>{value.toFixed(1)}</span>
     </span>
   );
+}
+
+/** Display names carry a trailing " (effort)" from the adapters; the effort
+ *  pill next to the name already shows it, so strip it for a clean title. */
+function baseName(displayName: string): string {
+  return displayName.replace(/\s*\((none|minimal|low|medium|high|xhigh|max|unknown)\)\s*$/i, "");
+}
+
+/** Model title capped at 25 characters; longer names scroll marquee-style. */
+function ModelName({ name }: { name: string }) {
+  const short = baseName(name);
+  if (short.length <= 25) return <span className="font-medium">{short}</span>;
+  return (
+    <span className="marquee block min-w-0 max-w-full overflow-hidden font-medium whitespace-nowrap" title={short}>
+      <span className="marquee-inner">
+        <span>{short}</span>
+        <span aria-hidden="true">{`  ·  ${short}  ·  `}</span>
+      </span>
+    </span>
+  );
+}
+
+const EFFORT_STOPS = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+/** Effort pill: gradient from white (none) to bright red (max). */
+function effortStyle(effort: string): React.CSSProperties {
+  const idx = EFFORT_STOPS.indexOf(effort.toLowerCase());
+  const t = idx < 0 ? 0.5 : idx / (EFFORT_STOPS.length - 1);
+  const g = Math.round(255 * (1 - t));
+  return {
+    backgroundColor: `rgb(255, ${g}, ${g})`,
+    color: t > 0.55 ? "#ffffff" : "#1a1a1a",
+    borderColor: "transparent",
+  };
+}
+
+/** Value heat: red → orange → yellow → green across a column range. */
+function heatColor(t: number): string {
+  const stops: Array<[number, number, number]> = [
+    [239, 68, 68],
+    [249, 115, 22],
+    [234, 179, 8],
+    [34, 197, 94],
+  ];
+  const x = Math.max(0, Math.min(1, t)) * (stops.length - 1);
+  const i = Math.min(stops.length - 2, Math.floor(x));
+  const f = x - i;
+  const mix = (a: number, b: number) => Math.round(a + (b - a) * f);
+  const [r, g, b] = [mix(stops[i][0], stops[i + 1][0]), mix(stops[i][1], stops[i + 1][1]), mix(stops[i][2], stops[i + 1][2])];
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** Polarity per sortable metric: does a higher value deserve green? */
+const HIGHER_BETTER: Record<SortKey, boolean> = {
+  efficiency: true,
+  domainEfficiency: true,
+  domain: true,
+  capabilityPerDollar: true,
+  intelligence: true,
+  coding: true,
+  agentic: true,
+  cursorBench: true,
+  taskCost: false,
+  taskTokens: false,
+  taskTime: false,
+  throughput: true,
+  latency: false,
+  inputCost: false,
+  outputCost: false,
+  cacheReadCost: false,
+  name: true,
+};
+
+function sortVal(s: ScoredVariant, sortKey: SortKey): number | string | null {
+  switch (sortKey) {
+    case "efficiency":
+      return s.efficiencyScore;
+    case "domainEfficiency":
+      return s.domainEfficiencyScore;
+    case "domain":
+      return s.domainScore;
+    case "capabilityPerDollar":
+      return s.capabilityPerDollar;
+    case "intelligence":
+      return s.intelligenceForGate;
+    case "coding":
+      return s.variant.metrics.coding?.value ?? null;
+    case "agentic":
+      return s.variant.metrics.agentic?.value ?? null;
+    case "cursorBench":
+      return s.variant.metrics.cursorBench?.value ?? null;
+    case "taskCost":
+      return s.effectiveTaskCostUsd;
+    case "taskTokens":
+      return s.variant.metrics.taskTokens?.value ?? null;
+    case "taskTime":
+      return s.variant.metrics.taskTimeSeconds?.value ?? null;
+    case "throughput":
+      return s.variant.metrics.throughputTps?.value ?? null;
+    case "latency":
+      return s.variant.metrics.latencyMs?.value ?? (s.variant.metrics.ttftSeconds?.value != null ? s.variant.metrics.ttftSeconds.value * 1000 : null);
+    case "inputCost":
+      return s.variant.metrics.inputUsdPerMillion?.value ?? null;
+    case "outputCost":
+      return s.variant.metrics.outputUsdPerMillion?.value ?? null;
+    case "cacheReadCost":
+      return s.variant.metrics.cacheReadUsdPerMillion?.value ?? null;
+    case "name":
+      return s.variant.displayName;
+  }
 }
 
 const METRIC_HELP: Record<keyof MetricWeights, { label: string; help: string }> = {
@@ -303,6 +420,19 @@ export function ModelExplorer() {
   const [sortDir, setSortDir] = React.useState<"asc" | "desc">("desc");
   const [selected, setSelected] = React.useState<string[]>([]);
   const [expanded, setExpanded] = React.useState<string | null>(null);
+  const [pinned, setPinned] = React.useState<string[]>([]);
+  const [compareOpen, setCompareOpen] = React.useState(false);
+  const [compareHint, setCompareHint] = React.useState(false);
+  const [flight, setFlight] = React.useState<{
+    key: number;
+    left: number;
+    top: number;
+    dx: number;
+    dy: number;
+  } | null>(null);
+  const explorerRef = React.useRef<HTMLDivElement>(null);
+  const compareBtnRef = React.useRef<HTMLButtonElement>(null);
+  const hintTimer = React.useRef<number | undefined>(undefined);
 
   // hydrate from URL / localStorage
   React.useEffect(() => {
@@ -491,47 +621,9 @@ export function ModelExplorer() {
 
   const sorted = React.useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
-    const get = (s: ScoredVariant): number | string | null => {
-      switch (sortKey) {
-        case "efficiency":
-          return s.efficiencyScore;
-        case "domainEfficiency":
-          return s.domainEfficiencyScore;
-        case "domain":
-          return s.domainScore;
-        case "capabilityPerDollar":
-          return s.capabilityPerDollar;
-        case "intelligence":
-          return s.intelligenceForGate;
-        case "coding":
-          return s.variant.metrics.coding?.value ?? null;
-        case "agentic":
-          return s.variant.metrics.agentic?.value ?? null;
-        case "cursorBench":
-          return s.variant.metrics.cursorBench?.value ?? null;
-        case "taskCost":
-          return s.effectiveTaskCostUsd;
-        case "taskTokens":
-          return s.variant.metrics.taskTokens?.value ?? null;
-        case "taskTime":
-          return s.variant.metrics.taskTimeSeconds?.value ?? null;
-        case "throughput":
-          return s.variant.metrics.throughputTps?.value ?? null;
-        case "latency":
-          return s.variant.metrics.latencyMs?.value ?? (s.variant.metrics.ttftSeconds?.value != null ? s.variant.metrics.ttftSeconds.value * 1000 : null);
-        case "inputCost":
-          return s.variant.metrics.inputUsdPerMillion?.value ?? null;
-        case "outputCost":
-          return s.variant.metrics.outputUsdPerMillion?.value ?? null;
-        case "cacheReadCost":
-          return s.variant.metrics.cacheReadUsdPerMillion?.value ?? null;
-        case "name":
-          return s.variant.displayName;
-      }
-    };
     return [...filtered].sort((a, b) => {
-      const av = get(a);
-      const bv = get(b);
+      const av = sortVal(a, sortKey);
+      const bv = sortVal(b, sortKey);
       if (typeof av === "string" || typeof bv === "string") {
         return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
       }
@@ -541,6 +633,32 @@ export function ModelExplorer() {
       return ((av as number) - (bv as number)) * dir;
     });
   }, [filtered, sortKey, sortDir]);
+
+  /** Column min/max over the full filtered ranking for value heat coloring. */
+  const heatRanges = React.useMemo(() => {
+    const keys: SortKey[] = [
+      "efficiency", "domainEfficiency", "domain", "intelligence", "coding",
+      "agentic", "cursorBench", "taskCost", "taskTokens", "taskTime",
+      "throughput", "latency", "inputCost", "outputCost", "cacheReadCost",
+      "capabilityPerDollar",
+    ];
+    const out = {} as Record<SortKey, { min: number; max: number } | null>;
+    for (const k of keys) {
+      const vals = sorted
+        .map((s) => sortVal(s, k))
+        .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+      out[k] = vals.length > 1 ? { min: Math.min(...vals), max: Math.max(...vals) } : null;
+    }
+    return out;
+  }, [sorted]);
+
+  const heatTone = (k: SortKey, value: number | null | undefined): string | undefined => {
+    const range = heatRanges[k];
+    if (value == null || !Number.isFinite(value) || !range || range.max <= range.min) return undefined;
+    let t = (value - range.min) / (range.max - range.min);
+    if (!HIGHER_BETTER[k]) t = 1 - t;
+    return heatColor(t);
+  };
 
   const leaders = React.useMemo(() => {
     const bestEff = [...sorted]
@@ -580,10 +698,73 @@ export function ModelExplorer() {
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const launchFlight = (source: HTMLElement) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const target = compareBtnRef.current;
+    if (!target) return;
+    requestAnimationFrame(() => {
+      const s = source.getBoundingClientRect();
+      const t = target.getBoundingClientRect();
+      if (s.width === 0 || t.width === 0) return;
+      setFlight({
+        key: Date.now(),
+        left: s.left + s.width / 2 - 16,
+        top: s.top + s.height / 2 - 16,
+        dx: t.left + t.width / 2 - (s.left + s.width / 2),
+        dy: t.top + t.height / 2 - (s.top + s.height / 2),
+      });
+    });
+  };
+
+  const handleCompareToggle = (id: string, source: HTMLElement | null) => {
+    const adding = !selected.includes(id);
+    if (adding && selected.length >= MAX_COMPARE) {
+      setCompareHint(true);
+      window.clearTimeout(hintTimer.current);
+      hintTimer.current = window.setTimeout(() => setCompareHint(false), 2500);
+      return;
+    }
+    if (adding && source) launchFlight(source);
+    toggleSelect(id);
+  };
+
+  const togglePin = (id: string) => {
+    setPinned((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= 3) return [...prev.slice(1), id];
       return [...prev, id];
     });
   };
+
+  // Sticky offsets must track the site header height and stack pinned rows
+  // under the sticky thead without overlap.
+  const syncStickyOffsets = React.useCallback(() => {
+    const root = explorerRef.current;
+    if (!root) return;
+    const siteHeader = document.querySelector("header");
+    const headerH = siteHeader ? siteHeader.getBoundingClientRect().height : 64;
+    root.style.setProperty("--effiq-sticky-top", `${Math.round(headerH)}px`);
+    const thead = root.querySelector("thead");
+    if (!thead) return;
+    let acc = headerH + thead.getBoundingClientRect().height;
+    for (const row of Array.from(root.querySelectorAll('tr[data-pinned="true"]'))) {
+      (row as HTMLElement).style.setProperty("--effiq-pin-top", `${Math.round(acc)}px`);
+      acc += row.getBoundingClientRect().height;
+    }
+  }, []);
+
+  React.useLayoutEffect(() => {
+    syncStickyOffsets();
+  });
+  React.useEffect(() => {
+    window.addEventListener("resize", syncStickyOffsets);
+    return () => window.removeEventListener("resize", syncStickyOffsets);
+  }, [syncStickyOffsets]);
 
   const exportJson = () => {
     const blob = new Blob([JSON.stringify(sorted.map((s) => ({
@@ -1144,21 +1325,14 @@ export function ModelExplorer() {
       )}
 
       {compareRows.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="mb-2 text-sm font-semibold">Compare ({compareRows.length}/3)</div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {compareRows.map((s) => (
-              <div key={s.variant.canonicalId} className="rounded-lg border p-3 text-sm">
-                <div className="font-medium">{s.variant.displayName}</div>
-                <div className="mt-2 space-y-1 font-mono text-xs tabular-nums text-muted-foreground">
-                  <div>Effiq Score {fmtNum(s.efficiencyScore)} · Domain {fmtNum(s.domainScore)}</div>
-                  <div>Task {fmtMoney(s.effectiveTaskCostUsd)} · Tokens {s.variant.metrics.taskTokens?.value != null ? fmtTokens(s.variant.metrics.taskTokens.value) : "—"} · Time {s.variant.metrics.taskTimeSeconds?.value != null ? `${s.variant.metrics.taskTimeSeconds.value.toFixed(1)}s` : "—"}</div>
-                  <div>In {fmtPricePerM(s.variant.metrics.inputUsdPerMillion?.value)} · Out {fmtPricePerM(s.variant.metrics.outputUsdPerMillion?.value)}</div>
-                  <div>Intel {fmtNum(s.intelligenceForGate)} · Coding {fmtNum(s.variant.metrics.coding?.value)}</div>
-                </div>
-              </div>
-            ))}
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs">
+          <div className="text-sm font-semibold">
+            Comparing {compareRows.length}/{MAX_COMPARE} models
           </div>
+          <Button size="sm" variant="outline" onClick={() => setSelected([])}>
+            <X data-icon="inline-start" />
+            Clear all
+          </Button>
         </div>
       )}
 
@@ -1253,13 +1427,17 @@ export function ModelExplorer() {
           Showing <span className="font-semibold text-foreground">{sorted.length}</span> ranked models
           {channelFilter === "cursor" ? " with Cursor published plans" : ""}
           {channelFilter === "opencode" ? " with OpenCode Go published prices" : ""}
+          {pinned.length > 0 ? ` · ${pinned.length} pinned (max 3)` : ""}
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-xs">
-        <Table>
-          <TableHeader>
+      <div ref={explorerRef}>
+        <Table className="effiq-explorer-table" wrapperClassName="overflow-x-visible">
+          <TableHeader className="bg-card">
             <TableRow>
+              <TableHead className="w-14">
+                <span className="sr-only">Compare and pin row controls</span>
+              </TableHead>
               <TableHead className="w-10">#</TableHead>
               <TableHead>Model variant</TableHead>
               {columns.map((c) => (
@@ -1275,20 +1453,30 @@ export function ModelExplorer() {
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={18} className="py-16 text-center text-muted-foreground">Loading Effiq rankings…</TableCell>
+                <TableCell colSpan={19} className="py-16 text-center text-muted-foreground">Loading Effiq rankings…</TableCell>
               </TableRow>
             )}
             {!loading && sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={18} className="py-16 text-center text-muted-foreground">
+                <TableCell colSpan={19} className="py-16 text-center text-muted-foreground">
                   No variants match the current filters. Lower the intelligence floor or include approximations to view more models.
                 </TableCell>
               </TableRow>
             )}
             {!loading &&
-              sorted.slice(0, 250).map((s, i) => {
+              (() => {
+                const rankById = new Map(sorted.map((s, idx) => [s.variant.canonicalId, idx + 1]));
+                const ordered = [...sorted].sort(
+                  (a, b) =>
+                    Number(pinned.includes(b.variant.canonicalId)) -
+                    Number(pinned.includes(a.variant.canonicalId)),
+                );
+                return ordered.slice(0, 250).map((s) => {
                 const v = s.variant;
                 const open = expanded === v.canonicalId;
+                const isPinned = pinned.includes(v.canonicalId);
+                const isSelected = selected.includes(v.canonicalId);
+                const compareFull = selected.length >= MAX_COMPARE;
                 const parent = getModelParent(v);
                 const lat =
                   v.metrics.latencyMs?.value ??
@@ -1297,29 +1485,62 @@ export function ModelExplorer() {
                   <React.Fragment key={v.canonicalId}>
                     <TableRow
                       className="cursor-pointer"
-                      data-state={selected.includes(v.canonicalId) ? "selected" : undefined}
+                      data-state={isSelected ? "selected" : undefined}
+                      data-pinned={isPinned ? "true" : undefined}
                       onClick={() => setExpanded(open ? null : v.canonicalId)}
                     >
-                      <TableCell className="tabular-nums text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell className="max-w-[320px]">
-                        <div className="flex flex-wrap items-center gap-1.5">
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            className="rounded border px-1.5 text-[10px] hover:bg-muted"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSelect(v.canonicalId);
-                            }}
+                            aria-pressed={isSelected}
+                            aria-label={
+                              isSelected
+                                ? `Remove ${v.displayName} from compare`
+                                : `Add ${v.displayName} to compare`
+                            }
+                            title={
+                              compareFull && !isSelected
+                                ? `Compare holds ${MAX_COMPARE} models — remove one first`
+                                : isSelected
+                                  ? "Remove from compare"
+                                  : "Add to compare"
+                            }
+                            className={`rounded p-1 transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
+                            }`}
+                            onClick={(e) => handleCompareToggle(v.canonicalId, e.currentTarget)}
                           >
-                            {selected.includes(v.canonicalId) ? "Selected" : "Compare"}
+                            <GitCompareArrows className="size-3.5" />
                           </button>
+                          <button
+                            type="button"
+                            aria-pressed={isPinned}
+                            aria-label={isPinned ? `Unpin ${v.displayName}` : `Pin ${v.displayName}`}
+                            title={isPinned ? "Unpin row" : "Pin row (stays visible while scrolling)"}
+                            className={`rounded p-1 transition-colors ${
+                              isPinned
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground/50 hover:bg-muted hover:text-foreground"
+                            }`}
+                            onClick={() => togglePin(v.canonicalId)}
+                          >
+                            {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">{rankById.get(v.canonicalId) ?? "—"}</TableCell>
+                      <TableCell className="w-[25ch] max-w-[25ch]">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span
                             className="size-2 rounded-full inline-block shrink-0"
                             style={{ backgroundColor: parent.color }}
                             title={`Parent: ${parent.label}`}
                           />
-                          <span className="font-medium">{v.displayName}</span>
-                          <Badge variant="outline" className="text-[10px]">{v.effort}</Badge>
+                          <ModelName name={v.displayName} />
+                          <span className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={effortStyle(v.effort)}>{v.effort}</span>
                           {v.fast && <Badge variant="secondary" className="text-[10px]">fast</Badge>}
                           {isCursorVariant(v) && (
                             <Badge variant="secondary" className="border-primary/40 text-primary text-[10px]">
@@ -1334,7 +1555,7 @@ export function ModelExplorer() {
                           {statusBadge(v.metrics.intelligence?.status)}
                         </div>
                         {channelFilter === "cursor" ? (
-                          <div className="font-mono text-[11px] text-foreground">
+                          <div className="max-w-[25ch] truncate font-mono text-[11px] text-foreground" title={v.ids.cursorTaskSlug || v.ids.cursorModelId || ""}>
                             <span className="font-semibold text-primary">Cursor:</span>{" "}
                             <span>{v.ids.cursorTaskSlug || v.ids.cursorModelId}</span>
                             {(() => {
@@ -1349,56 +1570,56 @@ export function ModelExplorer() {
                             })()}
                           </div>
                         ) : (
-                          <div className="font-mono text-[11px] text-muted-foreground">
+                          <div className="max-w-[25ch] truncate font-mono text-[11px] text-muted-foreground" title={`${v.provider}${v.ids.openrouterSlug ? ` · ${v.ids.openrouterSlug}` : ""}`}>
                             {v.provider}
                             {v.ids.openrouterSlug ? ` · ${v.ids.openrouterSlug}` : ""}
                             {v.offers.length ? ` · ${v.offers.length} offers` : ""}
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right"><ScoreBar value={s.efficiencyScore} /></TableCell>
-                      <TableCell className="text-right"><ScoreBar value={s.domainEfficiencyScore} /></TableCell>
-                      <TableCell className="text-right"><ScoreBar value={s.domainScore} /></TableCell>
-                      <TableCell className="text-right"><ScoreBar value={s.intelligenceForGate} max={70} /></TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtNum(v.metrics.coding?.value)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtNum(v.metrics.agentic?.value)}</TableCell>
+                      <TableCell className="text-right"><ScoreBar value={s.efficiencyScore} tone={heatTone("efficiency", s.efficiencyScore)} /></TableCell>
+                      <TableCell className="text-right"><ScoreBar value={s.domainEfficiencyScore} tone={heatTone("domainEfficiency", s.domainEfficiencyScore)} /></TableCell>
+                      <TableCell className="text-right"><ScoreBar value={s.domainScore} tone={heatTone("domain", s.domainScore)} /></TableCell>
+                      <TableCell className="text-right"><ScoreBar value={s.intelligenceForGate} max={70} tone={heatTone("intelligence", s.intelligenceForGate)} /></TableCell>
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("coding", v.metrics.coding?.value) }}>{fmtNum(v.metrics.coding?.value)}</TableCell>
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("agentic", v.metrics.agentic?.value) }}>{fmtNum(v.metrics.agentic?.value)}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {v.metrics.cursorBench?.value != null ? (
-                          <span className="font-semibold text-primary">{v.metrics.cursorBench.value.toFixed(1)}%</span>
+                          <span className="font-semibold" style={{ color: heatTone("cursorBench", v.metrics.cursorBench.value) }}>{v.metrics.cursorBench.value.toFixed(1)}%</span>
                         ) : (
                           "—"
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="tabular-nums">{fmtMoney(s.effectiveTaskCostUsd)}</div>
+                        <div className="tabular-nums" style={{ color: heatTone("taskCost", s.effectiveTaskCostUsd) }}>{fmtMoney(s.effectiveTaskCostUsd)}</div>
                         <div className="flex justify-end">{statusBadge(s.taskCostStatus)}</div>
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("taskTokens", v.metrics.taskTokens?.value) }}>
                         {v.metrics.taskTokens?.value != null ? fmtTokens(v.metrics.taskTokens.value) : "—"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("taskTime", v.metrics.taskTimeSeconds?.value) }}>
                         {v.metrics.taskTimeSeconds?.value != null ? `${v.metrics.taskTimeSeconds.value.toFixed(1)}s` : "—"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("throughput", v.metrics.throughputTps?.value) }}>
                         {v.metrics.throughputTps?.value != null ? Math.round(v.metrics.throughputTps.value) : "—"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("latency", lat) }}>
                         {lat != null ? (lat >= 1000 ? `${(lat / 1000).toFixed(1)}s` : `${Math.round(lat)}ms`) : "—"}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400 font-mono text-[11px]">
+                      <TableCell className="text-right tabular-nums font-mono text-[11px]" style={{ color: heatTone("inputCost", v.metrics.inputUsdPerMillion?.value) }}>
                         {fmtPricePerM(v.metrics.inputUsdPerMillion?.value)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-sky-600 dark:text-sky-400 font-mono text-[11px]">
+                      <TableCell className="text-right tabular-nums font-mono text-[11px]" style={{ color: heatTone("outputCost", v.metrics.outputUsdPerMillion?.value) }}>
                         {fmtPricePerM(v.metrics.outputUsdPerMillion?.value)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground font-mono text-[11px]">
+                      <TableCell className="text-right tabular-nums font-mono text-[11px]" style={{ color: heatTone("cacheReadCost", v.metrics.cacheReadUsdPerMillion?.value) }}>
                         {fmtPricePerM(v.metrics.cacheReadUsdPerMillion?.value)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">{fmtNum(s.capabilityPerDollar, 1)}</TableCell>
+                      <TableCell className="text-right tabular-nums" style={{ color: heatTone("capabilityPerDollar", s.capabilityPerDollar) }}>{fmtNum(s.capabilityPerDollar, 1)}</TableCell>
                     </TableRow>
                     {open && (
                       <TableRow>
-                        <TableCell colSpan={18} className="bg-muted/30 p-4 text-sm">
+                        <TableCell colSpan={19} className="bg-muted/30 p-4 text-sm">
                           <div className="grid gap-4 lg:grid-cols-12">
                             <div className="lg:col-span-5 space-y-3">
                               <div className="font-semibold text-sm">Calculation & Score Breakdown</div>
@@ -1451,7 +1672,8 @@ export function ModelExplorer() {
                     )}
                   </React.Fragment>
                 );
-              })}
+                });
+              })()}
           </TableBody>
         </Table>
       </div>
@@ -1465,7 +1687,64 @@ export function ModelExplorer() {
         Approximated model variants have clear labels.
         Primary data sources are Artificial Analysis, OpenRouter, Cursor, and OpenCode Go.
       </p>
-    </div>
+      </div>
+
+      {/* Floating compare entry point (top right, below the site header). */}
+      <div className="fixed right-4 top-[76px] z-40 flex flex-col items-end gap-2">
+        <button
+          ref={compareBtnRef}
+          type="button"
+          aria-hidden={compareRows.length === 0}
+          tabIndex={compareRows.length === 0 ? -1 : 0}
+          aria-label={`Compare ${compareRows.length} models`}
+          onClick={() => compareRows.length > 0 && setCompareOpen(true)}
+          className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card py-2 pl-3 pr-2 text-sm font-semibold shadow-lg transition-all outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+            compareRows.length > 0
+              ? "scale-100 opacity-100 hover:bg-muted"
+              : "pointer-events-none scale-90 opacity-0"
+          }`}
+        >
+          <GitCompareArrows className="size-4 text-primary" />
+          Compare
+          <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1 font-mono text-xs tabular-nums text-primary-foreground">
+            {compareRows.length}
+          </span>
+        </button>
+        {compareHint && (
+          <div
+            role="status"
+            className="max-w-56 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-lg"
+          >
+            Compare holds {MAX_COMPARE} models — remove one first.
+          </div>
+        )}
+      </div>
+
+      {flight && (
+        <div
+          key={flight.key}
+          className="effiq-compare-fly"
+          style={
+            {
+              left: `${flight.left}px`,
+              top: `${flight.top}px`,
+              "--fly-dx": `${flight.dx}px`,
+              "--fly-dy": `${flight.dy}px`,
+            } as React.CSSProperties
+          }
+          onAnimationEnd={() => setFlight(null)}
+        >
+          <Mail className="size-4" />
+        </div>
+      )}
+
+      <CompareDrawer
+        open={compareOpen}
+        rows={compareRows}
+        onRemove={(id) => toggleSelect(id)}
+        onClear={() => setSelected([])}
+        onClose={() => setCompareOpen(false)}
+      />
     </TooltipProvider>
   );
 }

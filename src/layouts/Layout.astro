@@ -86,6 +86,9 @@ const jsonLdPayload = Array.isArray(jsonLd)
     {jsonLdPayload.map((block) => (
       <script is:inline type="application/ld+json" set:html={JSON.stringify(block)} />
     ))}
+
+    <!-- Tally feedback popup (tally.so) -->
+    <script is:inline async src="https://tally.so/widgets/embed.js"></script>
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
     <a

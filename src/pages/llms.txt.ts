@@ -11,8 +11,8 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 
 ## Pages
 - Home / explorer: ${origin}/
-- Methodology: ${origin}/methodology/
-- About: ${origin}/about/
+- About + scoring guide: ${origin}/about/ (project background and the full methodology: defaults, sources, Effiq Score, profiles, estimation ladder, freshness)
+- Coding subscriptions by budget: ${origin}/subscriptions/ (plan advisor: consumption fit, smartest-model intelligence, task-size and rhythm controls)
 - Models matrix (JSON): ${origin}/api/models.json
 - Models matrix (CSV): ${origin}/api/models.csv
 - Health / data freshness: ${origin}/api/health
@@ -20,7 +20,7 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 - Robots: ${origin}/robots.txt
 
 ## Sources
-- Primary evidence: Artificial Analysis, OpenRouter, Cursor published pricing, OpenCode Go published pricing (https://opencode.ai/docs/go/)
+- Primary evidence: Artificial Analysis, OpenRouter, Cursor published pricing, OpenCode Go published pricing (https://opencode.ai/docs/go/), Claude/ChatGPT/Cursor subscription list prices with official, community, and derived consumption caps
 
 ## Notes
 - The home page ships a server-rendered top-10 ranking snapshot with the matrix date in the initial HTML; the full explorer recomputes in the browser after it fetches the public matrix

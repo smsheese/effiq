@@ -1,0 +1,743 @@
+---
+import { readFileSync } from "node:fs";
+import Layout from "@/layouts/Layout.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import SiteFooter from "@/components/SiteFooter.astro";
+import {
+  PAGES,
+  buildJsonLdGraph,
+  breadcrumbJsonLd,
+  websiteJsonLd,
+} from "@/lib/site";
+import {
+  parseSubscriptionCatalog,
+  sortPlansByPrice,
+} from "@/lib/sources/subscriptions";
+import {
+  buildAdvisorData,
+  getTaskSize,
+  planVerdictDatum,
+  recommend,
+  TASK_SIZES,
+  PORTABILITY_RANK,
+  type AdvisorInputs,
+  type Verdict,
+} from "@/lib/subscriptionAdvisor";
+import { subscriptionCostPerTask, type SubscriptionBucket, type SubscriptionPlan } from "@/lib/schema";
+import { loadMatrix } from "@/lib/topPicks";
+
+const page = PAGES.subscriptions;
+const site = Astro.site?.href ?? "http://localhost:4321/";
+const catalog = parseSubscriptionCatalog(
+  JSON.parse(readFileSync("data/subscription-plans.json", "utf8")),
+);
+const plans = sortPlansByPrice(catalog.plans);
+const plansById = new Map(plans.map((p) => [p.id, p]));
+const advisorData = buildAdvisorData(loadMatrix(), catalog.plans);
+const advisorById = new Map(advisorData.map((d) => [d.id, d]));
+
+const DEFAULT_INPUTS: AdvisorInputs = {
+  tasksPerMonth: 300,
+  sizeId: "coding",
+  rhythm: "steady",
+  intelFloor: 40,
+  monthlyBudget: 100,
+  requirePortable: false,
+};
+const defaultSize = getTaskSize(DEFAULT_INPUTS.sizeId);
+const initialRec = recommend(advisorData, DEFAULT_INPUTS);
+const initialRank = new Map(initialRec.ranked.map((r, i) => [r.planId, { ...r, order: i }]));
+const allVerdicts = new Map(
+  advisorData.map((d) => [d.id, planVerdictDatum(d, DEFAULT_INPUTS.tasksPerMonth, defaultSize, DEFAULT_INPUTS.rhythm, DEFAULT_INPUTS.monthlyBudget)]),
+);
+const orderedPlans = [...plans].sort(
+  (a, b) => (initialRank.get(a.id)?.order ?? 1000 + a.monthlyUsd) - (initialRank.get(b.id)?.order ?? 1000 + b.monthlyUsd),
+);
+
+const planName = (id: string | null): string =>
+  id ? (advisorById.get(id)?.name ?? plansById.get(id)?.name ?? id) : "—";
+
+const jsonLd = buildJsonLdGraph(site, [
+  websiteJsonLd(site),
+  breadcrumbJsonLd(site, [
+    { name: "Home", path: "/" },
+    { name: "Subscriptions", path: page.path },
+  ]),
+  {
+    "@type": "WebPage",
+    name: page.title,
+    description: page.description,
+    url: new URL(page.path, site).href,
+    isPartOf: { "@id": `${site.replace(/\/$/, "")}/#website` },
+    dateModified: catalog.observedAt,
+  },
+]);
+
+const observedDate = new Date(catalog.observedAt);
+const observedLabel = observedDate.toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+interface BucketMeta {
+  id: SubscriptionBucket;
+  title: string;
+  bestFor: string;
+}
+
+const BUCKETS: BucketMeta[] = [
+  { id: "upto-20", title: "Up to $20/mo", bestFor: "Everyday coding. Claude Pro vs ChatGPT Plus vs Cursor Pro — or $20 of pure metered spend on OpenRouter / OpenCode Go credits." },
+  { id: "upto-50", title: "Up to $50/mo", bestFor: "Small teams, or bigger metered budgets. ChatGPT Business or Cursor Teams Standard per seat — or $50 of tokens with no windows at all." },
+  { id: "upto-100", title: "Up to $100/mo", bestFor: "All-day agent coding for one person. Claude Max 5x, ChatGPT Pro 100, or Cursor Pro Plus — or $100 of metered spend." },
+  { id: "over-100", title: "Over $100/mo", bestFor: "Heavy agent workloads. Claude Max 20x vs ChatGPT Pro 20x vs Cursor Ultra at $200, plus Cursor Teams Premium per seat." },
+];
+
+const byBucket = (id: SubscriptionBucket): SubscriptionPlan[] =>
+  plans.filter((p) => p.bucket === id);
+
+const money = (n: number | null | undefined): string =>
+  n == null ? "—" : `$${n.toFixed(n < 1 && n > 0 ? 2 : 0)}`;
+
+const prettyFamily = (slug: string | null): string => {
+  if (!slug) return "—";
+  return slug
+    .replace(/^(claude|gpt|grok)-/, "")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const codexLabel = (p: SubscriptionPlan): string =>
+  p.accessLabel ?? (p.codexAccess === "none" ? "—" : `Codex ${p.codexAccess}`);
+
+const capacityLabel = (p: SubscriptionPlan): string =>
+  `${p.capacity.low.toLocaleString()}–${p.capacity.high.toLocaleString()} ${p.capacity.ref}`;
+
+const VERDICT_LABEL: Record<Verdict, string> = {
+  fits: "Fits",
+  tight: "Tight",
+  over: "Over limit",
+  unknown: "Unknown",
+};
+
+const PORTABILITY_LABEL: Record<string, string> = {
+  open: "Works in any tool",
+  vendor_tools_only: "Vendor tools only",
+  harness_locked: "Harness locked",
+};
+const PORTABILITY_BADGE: Record<string, string> = {
+  open: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400",
+  vendor_tools_only: "bg-amber-500/14 text-amber-700 dark:text-amber-400",
+  harness_locked: "bg-rose-500/12 text-rose-700 dark:text-rose-400",
+};
+
+const cardVerdict = (planId: string) => {
+  const d = advisorById.get(planId);
+  const v = allVerdicts.get(planId);
+  if (!d || !v) return { verdict: "unknown" as Verdict, need: null as string | null, headroom: null as number | null, affordable: true };
+  const lo = v.need.low, hi = v.need.high;
+  const same = lo === hi || !Number.isFinite(hi);
+  const needLabel = same ? fmtNeedLabel(lo, d.capacity.unit) : `${fmtNeedLabel(lo, d.capacity.unit)}–${fmtNeedLabel(hi, d.capacity.unit)}`;
+  return { verdict: v.verdict, need: needLabel, headroom: v.headroom, affordable: v.affordable };
+};
+
+function fmtNeedLabel(n: number, unit: string): string {
+  if (!Number.isFinite(n)) return "—";
+  if (unit === "monthly_usd") return "$" + (n < 10 ? n.toFixed(1) : n < 1000 ? String(Math.round(n)) : n.toLocaleString("en-US", { maximumFractionDigits: 0 }));
+  if (unit === "weekly_hours") return (n < 10 ? n.toFixed(1) : String(Math.round(n))) + " hrs/wk";
+  return (n < 10 ? n.toFixed(1) : String(Math.round(n))) + " msgs/session";
+}
+
+const th =
+  "h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+const td = "px-4 py-3 align-middle text-sm text-foreground";
+const tr = "border-b border-border/80 last:border-0";
+---
+
+<Layout
+  title={page.title}
+  description={page.description}
+  ogImage={page.ogImage}
+  jsonLd={jsonLd}
+>
+  <SiteHeader current="subscriptions" />
+
+  <style>
+    .verdict-badge { display: inline-flex; align-items: center; border-radius: 9999px; padding: 0.15rem 0.65rem; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .verdict-fits { background: rgb(16 185 129 / 0.12); color: #047857; }
+    .verdict-tight { background: rgb(245 158 11 / 0.14); color: #b45309; }
+    .verdict-over { background: rgb(244 63 94 / 0.12); color: #be123c; }
+    .verdict-unknown { background: rgb(100 116 139 / 0.14); color: #475569; }
+    .dark .verdict-fits { color: #6ee7b7; }
+    .dark .verdict-tight { color: #fcd34d; }
+    .dark .verdict-over { color: #fda4af; }
+    .dark .verdict-unknown { color: #94a3b8; }
+    .headroom-track { height: 0.5rem; border-radius: 9999px; background: rgb(100 116 139 / 0.18); overflow: hidden; }
+    .headroom-fill { height: 100%; border-radius: 9999px; transition: width 0.2s ease; }
+    .headroom-fits { background: #10b981; }
+    .headroom-tight { background: #f59e0b; }
+    .headroom-over { background: #f43f5e; }
+    .headroom-unknown { background: #64748b; }
+    .size-pill { color: hsl(var(--muted-foreground)); }
+    .size-pill:hover { color: hsl(var(--foreground)); }
+    .size-pill[aria-pressed="true"] { background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--primary) / 0.4); box-shadow: var(--shadow-xs); }
+  </style>
+
+  <main id="main-content" class="mx-auto max-w-[1500px] px-4 pb-16 pt-10 sm:pt-12">
+    <header class="mb-8 max-w-3xl space-y-4 border-b border-border/80 pb-8">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+        Subscriptions
+      </p>
+      <h1 class="text-4xl font-bold tracking-tight text-foreground text-balance sm:text-5xl">
+        {page.heading}
+      </h1>
+      <p class="text-base leading-relaxed text-muted-foreground sm:text-lg">
+        Tell the advisor your workload — it checks every plan's <strong class="font-semibold text-foreground">included consumption</strong> in
+        that plan's own unit (Claude weekly hours, Cursor monthly API-dollar pools, ChatGPT messages per session,
+        metered dollars on OpenRouter and OpenCode Go),
+        shows the <strong class="font-semibold text-foreground">smartest model</strong> each plan unlocks with measured
+        intelligence scores, and recommends the cheapest plan that fits.
+      </p>
+      <p class="text-xs text-muted-foreground">
+        Prices observed{" "}
+        <time datetime={catalog.observedAt} class="font-medium text-foreground">{observedLabel}</time> (UTC)
+        from <a href="https://claude.com/pricing" class="underline-offset-4 hover:underline">Claude pricing</a>,
+        {" "}<a href="https://developers.openai.com/codex/pricing" class="underline-offset-4 hover:underline">Codex pricing</a>,
+        {" "}<a href="https://cursor.com/docs/models-and-pricing" class="underline-offset-4 hover:underline">Cursor models &amp; pricing</a>,
+        {" "}<a href="https://openrouter.ai/models" class="underline-offset-4 hover:underline">OpenRouter</a>, and
+        {" "}<a href="https://opencode.ai/docs/go/" class="underline-offset-4 hover:underline">OpenCode Go</a>.
+        Caps mix <strong class="font-semibold text-foreground">official</strong> vendor numbers with
+        {" "}<strong class="font-semibold text-foreground">community</strong> ranges and <strong class="font-semibold text-foreground">derived</strong> ratios — every number carries its badge.
+      </p>
+    </header>
+
+    <section aria-labelledby="advisor-heading" class="mb-10 space-y-5">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="advisor-heading" class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Start with your budget
+        </h2>
+      </div>
+      <p class="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        Set what you can spend per month first — plans above your budget dim and leave the recommendations.
+        Then tune volume, task size, rhythm, and the intelligence floor below.
+      </p>
+
+      <div class="rounded-2xl border border-border bg-card p-5 shadow-xs">
+        <div class="mb-2 flex items-center justify-between">
+          <label for="budget" class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Monthly budget</label>
+          <output id="budget-label" for="budget" class="font-mono text-xs font-medium tabular-nums text-foreground">$100/mo</output>
+        </div>
+        <input id="budget" type="range" min="10" max="200" step="5" value="100" class="mt-1 w-full accent-primary" />
+        <div class="mt-1 flex justify-between text-xs text-muted-foreground">
+          <span>$10/mo</span>
+          <span>$100/mo</span>
+          <span>$200/mo</span>
+        </div>
+        <div class="mt-3">
+          <button type="button" id="no-cap" aria-pressed="false" class="size-pill inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs shadow-xs transition-colors">
+            <span>
+              <span class="block font-medium">Over $200 (no cap)</span>
+              <span class="block opacity-80">Show $200+ plans in recommendations</span>
+            </span>
+          </button>
+        </div>
+        <p class="mt-2 text-xs text-muted-foreground">Plans above your budget stay visible but dimmed, and leave the recommendations. Per-seat plans compare on per-seat fee.</p>
+        <div class="mt-4 border-t border-border/80 pt-4">
+          <button type="button" id="tools-only" aria-pressed="false" class="size-pill inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-xs shadow-xs transition-colors">
+            <span>
+              <span class="block font-medium">Must work in third-party tools</span>
+              <span class="block opacity-80">Exclude plans locked to the vendor's own harness</span>
+            </span>
+          </button>
+          <p class="mt-2 text-xs text-muted-foreground">Claude plans lock you to Claude Code / Cowork / Agent SDK — subscription auth in other harnesses risks a ban. ChatGPT, OpenRouter, and OpenCode Go work anywhere.</p>
+        </div>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-2">
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div class="mb-2 flex items-center justify-between">
+            <label for="task-volume" class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tasks per month</label>
+            <output id="task-volume-label" for="task-volume" class="font-mono text-xs font-medium tabular-nums text-foreground">300</output>
+          </div>
+          <input id="task-volume" type="range" min="50" max="2000" step="50" value="300" class="mt-1 w-full accent-primary" />
+          <div class="mt-1 flex justify-between text-xs text-muted-foreground">
+            <span>50 (light)</span>
+            <span>1000 (daily agent use)</span>
+            <span>2000 (heavy)</span>
+          </div>
+          <div class="mb-2 mt-5 flex items-center justify-between">
+            <label for="intel-floor" class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Minimum intelligence</label>
+            <output id="intel-floor-label" for="intel-floor" class="font-mono text-xs font-medium tabular-nums text-foreground">40</output>
+          </div>
+          <input id="intel-floor" type="range" min="30" max="55" step="1" value="40" class="mt-1 w-full accent-primary" />
+          <p class="mt-1 text-xs text-muted-foreground">Plans whose smartest model scores below this are excluded.</p>
+        </div>
+
+        <div class="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <div class="mb-2 flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What does a task look like?</p>
+          </div>
+          <div class="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/40 p-1" role="group" aria-label="Task size">
+            {TASK_SIZES.map((s) => (
+              <button
+                type="button"
+                class="size-pill flex-1 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors"
+                data-size={s.id}
+                aria-pressed={s.id === DEFAULT_INPUTS.sizeId ? "true" : "false"}
+              >
+                <span class="block font-medium">{s.label}</span>
+                <span class="block opacity-80">{s.blurb}</span>
+              </button>
+            ))}
+          </div>
+          <div class="mb-2 mt-4 flex items-center justify-between">
+            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Usage rhythm</p>
+          </div>
+          <div class="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/40 p-1" role="group" aria-label="Usage rhythm">
+            <button type="button" data-rhythm="steady" aria-pressed="true" class="size-pill flex-1 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors">
+              <span class="block font-medium">Steady</span>
+              <span class="block opacity-80">Spread across ~20 sessions/mo</span>
+            </button>
+            <button type="button" data-rhythm="bursty" aria-pressed="false" class="size-pill flex-1 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors">
+              <span class="block font-medium">Bursty</span>
+              <span class="block opacity-80">Heavy days, ~8 sessions/mo — 5h windows bind first</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="rec-strip" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-2xl border border-primary/30 bg-secondary/60 p-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Best fit</p>
+          <p class="mt-1 text-lg font-bold text-foreground" data-rec="bestFit">{planName(initialRec.bestFit)}</p>
+          <p class="text-xs text-muted-foreground" data-rec-why="bestFit">Cheapest plan that fits with comfortable headroom.</p>
+        </div>
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-xs">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Cheapest that fits</p>
+          <p class="mt-1 text-lg font-bold text-foreground" data-rec="cheapestFit">{planName(initialRec.cheapestFit)}</p>
+          <p class="text-xs text-muted-foreground" data-rec-why="cheapestFit">Lowest fee among fitting plans.</p>
+        </div>
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-xs">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Most headroom</p>
+          <p class="mt-1 text-lg font-bold text-foreground" data-rec="mostHeadroom">{planName(initialRec.mostHeadroom)}</p>
+          <p class="text-xs text-muted-foreground" data-rec-why="mostHeadroom">Largest capacity margin for growth and bursts.</p>
+        </div>
+        <div class="rounded-2xl border border-border bg-card p-4 shadow-xs">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Most portable fit</p>
+          <p class="mt-1 text-lg font-bold text-foreground" data-rec="mostPortable">{planName(initialRec.mostPortable)}</p>
+          <p class="text-xs text-muted-foreground" data-rec-why="mostPortable">Best fitting plan that works in third-party tools.</p>
+        </div>
+      </div>
+
+      <div id="plan-cards" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {orderedPlans.map((p) => {
+          const d = advisorById.get(p.id);
+          const v = cardVerdict(p.id);
+          const perTask = subscriptionCostPerTask(p.monthlyUsd, DEFAULT_INPUTS.tasksPerMonth);
+          const burn = d?.burnPerSize[defaultSize.id];
+          return (
+            <article
+              class={`plan-card flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 shadow-xs${v.affordable ? "" : " opacity-60"}`}
+              data-plan={p.id}
+              data-fee={p.monthlyUsd}
+              data-intel={d?.intel.value ?? ""}
+              data-cap-unit={p.capacity.unit}
+              data-cap-low={p.capacity.low}
+              data-cap-high={p.capacity.high}
+              data-cap-basis={p.capacity.basis}
+              data-cap-ref={p.capacity.ref}
+              data-portability={p.portability.level}
+              data-burn={JSON.stringify(d?.burnPerSize ?? {})}
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-bold text-foreground">{p.name}</h3>
+                  <p class="text-xs text-muted-foreground">{p.provider} · {money(p.monthlyUsd)}/mo{p.annualUsdPerMo != null ? ` (${money(p.annualUsdPerMo)}/mo annual)` : ""}</p>
+                </div>
+                <span class={`verdict-badge verdict-${v.verdict}`} data-verdict>{VERDICT_LABEL[v.verdict]}</span>
+              </div>
+              <p class="text-xs font-semibold text-amber-600 dark:text-amber-400" data-budget-note hidden={v.affordable}>
+                {v.affordable ? "" : `Over your $${DEFAULT_INPUTS.monthlyBudget} budget`}
+              </p>
+              <p class="text-sm text-foreground" data-need>
+                {v.need != null ? <>Your need: <strong class="font-semibold">{v.need}</strong></> : "Need unavailable for these settings."}
+                <span class="block text-xs text-muted-foreground">Included: {capacityLabel(p)} · {p.capacity.basis}</span>
+              </p>
+              <div>
+                <div class="headroom-track"><div class="headroom-fill headroom-fits" data-headroom-bar style="width: 50%"></div></div>
+                <p class="mt-1 text-xs text-muted-foreground" data-headroom-label>Headroom bar: your need vs included capacity.</p>
+              </div>
+              <dl class="grid grid-cols-2 gap-2 text-xs">
+                <div class="rounded-xl bg-muted/50 p-2.5">
+                  <dt class="font-semibold uppercase tracking-wide text-muted-foreground">Smartest model</dt>
+                  <dd class="mt-0.5 font-medium text-foreground">{prettyFamily(d?.intel.family ?? null)}{d?.intel.value != null ? ` · intel ${d.intel.value.toFixed(1)}` : ""}</dd>
+                  <dd class="text-muted-foreground">measured score · {codexLabel(p)}</dd>
+                </div>
+                <div class="rounded-xl bg-muted/50 p-2.5">
+                  <dt class="font-semibold uppercase tracking-wide text-muted-foreground">Windows</dt>
+                  <dd class="mt-0.5 text-foreground">{p.usageWindow5h ?? "—"}</dd>
+                  <dd class="text-muted-foreground">{p.weeklyLimit ?? ""}</dd>
+                </div>
+                <div class="col-span-2 rounded-xl bg-muted/50 p-2.5">
+                  <dt class="font-semibold uppercase tracking-wide text-muted-foreground">Tool integration</dt>
+                  <dd class="mt-0.5">
+                    <span class={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${PORTABILITY_BADGE[p.portability.level]}`}>{PORTABILITY_LABEL[p.portability.level]}</span>
+                    <span class="block text-muted-foreground">{p.portability.tools}</span>
+                    {p.portability.riskNote && (
+                      <span class="mt-1 block text-rose-600 dark:text-rose-400">{p.portability.riskNote}</span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+              <p class="text-xs text-muted-foreground">
+                <span data-feetask>{money(p.monthlyUsd)}/mo ≈ ${(perTask ?? 0) < 1 ? (perTask ?? 0).toFixed(3) : (perTask ?? 0).toFixed(2)}/task at 300 tasks/mo</span>
+                {burn?.low != null && burn?.high != null && p.capacity.unit === "monthly_usd" ? ` · API-value burn $${burn.low.toFixed(2)}–$${burn.high.toFixed(2)}/task across models` : ""}
+                {burn?.low != null && p.capacity.unit !== "monthly_usd" ? ` · ≈$${burn.low.toFixed(2)}/task API value` : ""}
+              </p>
+              {p.id.startsWith("cursor-teams") || p.id === "chatgpt-business" ? (
+                <p class="text-xs text-muted-foreground">Per seat.</p>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+      <p id="floor-note" class="text-xs text-muted-foreground" hidden></p>
+    </section>
+
+    {BUCKETS.map((bucket) => {
+      const rows = byBucket(bucket.id);
+      if (!rows.length) return null;
+      return (
+        <section aria-label={bucket.title} class="mb-10 space-y-4">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 class="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {bucket.title}
+            </h2>
+          </div>
+          <p class="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            {bucket.bestFor}
+          </p>
+          <div class="overflow-x-auto rounded-2xl border border-border bg-card shadow-xs">
+            <table class="w-full caption-bottom text-sm">
+              <thead class="bg-muted/50">
+                <tr class="border-b border-border">
+                  <th scope="col" class={th}>Plan</th>
+                  <th scope="col" class={`${th} text-right`}>Monthly</th>
+                  <th scope="col" class={th}>Smartest model</th>
+                  <th scope="col" class={th}>Included capacity</th>
+                  <th scope="col" class={th}>Tool integration</th>
+                  <th scope="col" class={th}>5-hour window</th>
+                  <th scope="col" class={th}>Caps &amp; overage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((p) => {
+                  const d = advisorById.get(p.id);
+                  return (
+                    <tr class={tr}>
+                      <td class={td}>
+                        <span class="font-medium">{p.name}</span>
+                        <span class="text-xs text-muted-foreground"> · {p.provider}</span>
+                        <div class="mt-1 flex flex-wrap gap-1">
+                          <span class="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            price: {p.priceStatus}
+                          </span>
+                          <span class="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            capacity: {p.capacity.basis}
+                          </span>
+                        </div>
+                      </td>
+                      <td class={`${td} text-right font-mono tabular-nums`}>{money(p.monthlyUsd)}</td>
+                      <td class={td}>
+                        {prettyFamily(d?.intel.family ?? null)}
+                        {d?.intel.value != null && (
+                          <span class="block font-mono tabular-nums text-muted-foreground">intel {d.intel.value.toFixed(1)} ({d.intel.status})</span>
+                        )}
+                      </td>
+                      <td class={td}>
+                        {capacityLabel(p)}
+                        <span class="block text-xs text-muted-foreground">{p.capacity.basis}</span>
+                      </td>
+                      <td class={td}>
+                        <span class={`inline-block rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${PORTABILITY_BADGE[p.portability.level]}`}>{PORTABILITY_LABEL[p.portability.level]}</span>
+                        <span class="block text-xs text-muted-foreground" title={p.portability.riskNote ?? p.portability.tools}>{p.portability.tools}</span>
+                      </td>
+                      <td class={`${td} text-muted-foreground`}>{p.usageWindow5h ?? "—"}</td>
+                      <td class={`${td} text-muted-foreground`}>
+                        {p.weeklyLimit ?? "—"}
+                        {p.overageCredits && (
+                          <span class="block text-xs">+ credits / on-demand past the allowance</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {rows.map((p) => p.notes && (
+            <p class="max-w-3xl text-xs leading-relaxed text-muted-foreground">
+              <strong class="font-semibold text-foreground">{p.name}:</strong> {p.notes}
+            </p>
+          ))}
+        </section>
+      );
+    })}
+
+    <section aria-label="Method note" class="max-w-3xl space-y-3 border-t border-border/80 pt-8">
+      <h2 class="text-xl font-bold tracking-tight text-foreground">How the advisor works</h2>
+      <ul class="list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+        <li>Each provider caps usage in its own unit, so plans are judged natively: Claude in <strong class="font-semibold text-foreground">Sonnet-equivalent hours per week</strong> (Pro 40–80, Max 5x 140–280 + 15–35 Opus, Max 20x derived 4× — all from Anthropic's own announcements), Cursor in <strong class="font-semibold text-foreground">API-dollar pools per month</strong> (included value ≈ fee, community consensus; mechanism official), ChatGPT in <strong class="font-semibold text-foreground">Codex messages per 5-hour session</strong> (Plus Sol 10–100 through Pro 20x 200–2000, official Codex pricing).</li>
+        <li>Your need is converted per task size with stated assumptions: Q&amp;A = 1 msg / 0.1h, coding task = 3 msgs / 0.5h, agent loop = 8 msgs / 1.5h, deep work = 12 msgs / 2.5h; steady rhythm spreads load over ~20 sessions/mo, bursty over ~8. Verdicts: need within the low end = Fits, inside the range = Tight, above it = Over.</li>
+        <li>Metered budgets are the no-subscription baseline: OpenRouter $20/$50/$100 buys that much API value at market rates with no windows, and OpenCode Go $20/$50/$100 means a $10 membership plus the rest as Zen credits priced at published Zen rates (burn uses the Zen offer tariffs, not merged prices). They usually win for light or spiky use and lose once a flat plan's included pool covers the month.</li>
+        <li>Smartest-model intelligence comes from measured Artificial Analysis indexes in the matrix; Cursor burn ranges come from measured per-token tariffs. When a plan caps you, Claude switches models down, ChatGPT falls back to weaker models, and Cursor continues on on-demand billing — a Tight verdict with a fallback is often fine for mixed work.</li>
+        <li>Tool integration is the third big factor after cost and intelligence. <strong class="font-semibold text-foreground">Open</strong> plans (ChatGPT via "sign in with ChatGPT", OpenRouter, OpenCode Go) drive any OpenAI-compatible harness; <strong class="font-semibold text-foreground">vendor-tools-only</strong> plans (Cursor) work only inside the vendor's own apps; <strong class="font-semibold text-foreground">harness-locked</strong> plans (Claude) officially support only Claude Code, Cowork, and the Agent SDK — using subscription auth in third-party harnesses violates Anthropic's ToS and risks account bans. Flip "Must work in third-party tools" to drop locked plans from the recommendations, and check the Most-portable-fit card.</li>
+        <li>Ranking priority: monthly cost (budget filter first), then intelligence (Effiq Score of each plan's smartest model on the coding profile), then portability — same-fee ties go to the more portable plan.</li>
+        <li>Evidence labels: <strong class="font-semibold text-foreground">measured</strong> (vendor list prices, benchmark scores, tariffs), <strong class="font-semibold text-foreground">official</strong> (vendor-stated caps), <strong class="font-semibold text-foreground">community</strong> (user-reported ranges: Cursor included value, Fable burn), <strong class="font-semibold text-foreground">derived</strong> (tier ratios, budget-tier math). No API key on your end would add firmer data — vendors publish no quota API.</li>
+        <li>Sources: <a href="https://claude.com/pricing" class="underline-offset-4 hover:underline">Claude pricing</a>, <a href="https://developers.openai.com/codex/pricing" class="underline-offset-4 hover:underline">Codex pricing</a>, <a href="https://help.openai.com/en/articles/9793128-about-chatgpt-pro-tiers" class="underline-offset-4 hover:underline">Pro tiers</a>, <a href="https://help.openai.com/en/articles/20001275" class="underline-offset-4 hover:underline">Work and Codex</a>, <a href="https://cursor.com/docs/models-and-pricing" class="underline-offset-4 hover:underline">Cursor models &amp; pricing</a>, <a href="https://openrouter.ai/models" class="underline-offset-4 hover:underline">OpenRouter models</a>, <a href="https://opencode.ai/docs/go/" class="underline-offset-4 hover:underline">OpenCode Go</a>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <SiteFooter />
+</Layout>
+
+<script type="application/json" id="advisor-data" set:html={JSON.stringify(advisorData)} />
+<script type="application/json" id="advisor-sizes" set:html={JSON.stringify(TASK_SIZES)} />
+
+<script is:inline>
+  (function () {
+    var dataEl = document.getElementById("advisor-data");
+    var sizesEl = document.getElementById("advisor-sizes");
+    var cardsRoot = document.getElementById("plan-cards");
+    if (!dataEl || !sizesEl || !cardsRoot) return;
+    var DATA = JSON.parse(dataEl.textContent || "[]");
+    var SIZES = JSON.parse(sizesEl.textContent || "[]");
+    var byId = {};
+    DATA.forEach(function (d) { byId[d.id] = d; });
+
+    var tasksEl = document.getElementById("task-volume");
+    var tasksLabel = document.getElementById("task-volume-label");
+    var floorEl = document.getElementById("intel-floor");
+    var floorLabel = document.getElementById("intel-floor-label");
+    var floorNote = document.getElementById("floor-note");
+    var budgetEl = document.getElementById("budget");
+    var budgetLabel = document.getElementById("budget-label");
+    var noCapBtn = document.getElementById("no-cap");
+    var toolsBtn = document.getElementById("tools-only");
+    var state = { tasks: 300, sizeId: "coding", rhythm: "steady", floor: 40, budget: 100, noCap: false, toolsOnly: false };
+
+    function sizeOf(id) {
+      for (var i = 0; i < SIZES.length; i++) if (SIZES[i].id === id) return SIZES[i];
+      return SIZES[1];
+    }
+    function sessions(rhythm) { return rhythm === "bursty" ? 8 : 20; }
+    function fmtNeed(n, unit) {
+      if (!isFinite(n)) return "—";
+      if (unit === "monthly_usd") return "$" + (n < 10 ? n.toFixed(1) : n < 1000 ? String(Math.round(n)) : n.toLocaleString("en-US", { maximumFractionDigits: 0 }));
+      if (unit === "weekly_hours") return (n < 10 ? n.toFixed(1) : String(Math.round(n))) + " hrs/wk";
+      return (n < 10 ? n.toFixed(1) : String(Math.round(n))) + " msgs/session";
+    }
+    function needFor(d, size) {
+      var cap = d.capacity.unit;
+      if (cap === "weekly_hours") {
+        var w = (state.tasks / 4.33) * size.hoursPerTask;
+        return { low: w, high: w };
+      }
+      if (cap === "monthly_usd") {
+        var burn = (d.burnPerSize && d.burnPerSize[size.id]) || {};
+        var lo = burn.low != null ? state.tasks * burn.low : NaN;
+        var hi = burn.high != null ? state.tasks * burn.high : NaN;
+        return { low: lo, high: hi };
+      }
+      var per = (state.tasks / sessions(state.rhythm)) * size.msgsPerTask;
+      return { low: per, high: per };
+    }
+    function verdict(need, cap) {
+      var vals = [need.low, need.high, cap.low, cap.high];
+      for (var i = 0; i < vals.length; i++) if (!isFinite(vals[i]) || vals[i] <= 0) return "unknown";
+      if (need.high <= cap.low) return "fits";
+      if (need.low > cap.high) return "over";
+      return "tight";
+    }
+    function headroom(need, cap) {
+      var n = (need.low + need.high) / 2, c = (cap.low + cap.high) / 2;
+      if (!isFinite(n) || n <= 0 || !isFinite(c)) return null;
+      return c / n;
+    }
+
+    var VERDICT_LABEL = { fits: "Fits", tight: "Tight", over: "Over limit", unknown: "Unknown" };
+    var VERDICT_RANK = { fits: 0, tight: 1, over: 2, unknown: 3 };
+
+    var PORT_RANK = { open: 0, vendor_tools_only: 1, harness_locked: 2 };
+    var PORT_NOTE = {
+      harness_locked: "Locked to vendor tools — excluded by your third-party-tools filter",
+      vendor_tools_only: "Vendor tools only — excluded by your third-party-tools filter"
+    };
+
+    function compute() {
+      var size = sizeOf(state.sizeId);
+      var all = [];
+      var excludedFloor = 0;
+      DATA.forEach(function (d) {
+        if (d.intel.value == null || d.intel.value < state.floor) { excludedFloor++; return; }
+        var need = needFor(d, size);
+        var v = verdict(need, d.capacity);
+        var affordable = state.noCap || d.monthlyUsd <= state.budget;
+        var toolOk = !state.toolsOnly || PORT_RANK[d.portability.level] === 0;
+        all.push({ d: d, need: need, verdict: v, hr: headroom(need, d.capacity), affordable: affordable, toolOk: toolOk });
+      });
+      var ranked = all.filter(function (r) { return r.affordable && r.toolOk; });
+      ranked.sort(function (a, b) {
+        return (a.d.monthlyUsd - b.d.monthlyUsd) ||
+          ((b.d.effiq == null ? -Infinity : b.d.effiq) - (a.d.effiq == null ? -Infinity : a.d.effiq)) ||
+          (PORT_RANK[a.d.portability.level] - PORT_RANK[b.d.portability.level]) ||
+          (VERDICT_RANK[a.verdict] - VERDICT_RANK[b.verdict]);
+      });
+      var over = all.filter(function (r) { return !r.affordable && r.toolOk; })
+        .sort(function (a, b) { return a.d.monthlyUsd - b.d.monthlyUsd; });
+      var locked = all.filter(function (r) { return r.affordable && !r.toolOk; })
+        .sort(function (a, b) { return a.d.monthlyUsd - b.d.monthlyUsd; });
+      return { ranked: ranked, over: over, locked: locked, size: size, excludedFloor: excludedFloor };
+    }
+
+    function render() {
+      var out = compute();
+      var cards = Array.prototype.slice.call(cardsRoot.querySelectorAll(".plan-card"));
+      var seen = {};
+      // Affordable + tool-compatible plans first (ranked), then excluded plans, dimmed
+      out.ranked.concat(out.over, out.locked).forEach(function (r) {
+        var card = cardsRoot.querySelector('[data-plan="' + r.d.id + '"]');
+        if (!card) return;
+        seen[r.d.id] = true;
+        cardsRoot.appendChild(card);
+        if (r.affordable && r.toolOk) { card.classList.remove("opacity-60"); }
+        else { card.classList.add("opacity-60"); }
+        var badge = card.querySelector("[data-verdict]");
+        if (badge) { badge.textContent = VERDICT_LABEL[r.verdict]; badge.className = "verdict-badge verdict-" + r.verdict; }
+        var budgetNote = card.querySelector("[data-budget-note]");
+        if (budgetNote) {
+          if (r.affordable && r.toolOk) { budgetNote.hidden = true; budgetNote.textContent = ""; }
+          else if (!r.toolOk) { budgetNote.hidden = false; budgetNote.textContent = PORT_NOTE[r.d.portability.level] || "Excluded by your tool filter"; }
+          else { budgetNote.hidden = false; budgetNote.textContent = "Over your $" + state.budget + " budget"; }
+        }
+        var needEl = card.querySelector("[data-need]");
+        if (needEl) {
+          var lo = fmtNeed(r.need.low, r.d.capacity.unit), hi = fmtNeed(r.need.high, r.d.capacity.unit);
+          var needTxt = lo === hi ? lo : lo + "–" + hi;
+          needEl.innerHTML = "";
+          var strong = document.createElement("strong");
+          strong.className = "font-semibold";
+          strong.textContent = "Your need: " + needTxt;
+          needEl.appendChild(strong);
+          var sub = document.createElement("span");
+          sub.className = "block text-xs text-muted-foreground";
+          sub.textContent = "Included: " + r.d.capacity.low.toLocaleString() + "–" + r.d.capacity.high.toLocaleString() + " " + r.d.capacity.ref + " · " + r.d.capacity.basis;
+          needEl.appendChild(sub);
+        }
+        var bar = card.querySelector("[data-headroom-bar]");
+        if (bar) {
+          var mid = (r.need.low + r.need.high) / 2;
+          var pct = isFinite(mid) && r.d.capacity.high > 0 ? Math.min(100, (mid / r.d.capacity.high) * 100) : 0;
+          bar.style.width = pct.toFixed(1) + "%";
+          bar.className = "headroom-fill headroom-" + r.verdict;
+        }
+        var barLabel = card.querySelector("[data-headroom-label]");
+        if (barLabel) {
+          barLabel.textContent = r.hr != null && isFinite(r.hr)
+            ? (r.hr >= 1 ? Math.round(r.hr * 10) / 10 + "x headroom" : "Short by " + Math.round((1 / r.hr) * 10) / 10 + "x")
+            : "Headroom unknown for these settings.";
+        }
+      });
+      cards.forEach(function (card) {
+        var id = card.getAttribute("data-plan");
+        if (!seen[id]) { card.style.display = "none"; }
+        else { card.style.display = ""; }
+      });
+      if (floorNote) {
+        if (out.excludedFloor > 0) {
+          floorNote.hidden = false;
+          floorNote.textContent = out.excludedFloor + " plan(s) hidden below your intelligence floor of " + state.floor + ".";
+        } else { floorNote.hidden = true; floorNote.textContent = ""; }
+      }
+      // Recommendation strip (affordable + tool-compatible plans only)
+      var fits = out.ranked.filter(function (r) { return r.verdict === "fits"; });
+      var roomy = fits.filter(function (r) { return (r.hr || 0) >= 1.5; });
+      function cheapest(list) {
+        return list.slice().sort(function (a, b) { return a.d.monthlyUsd - b.d.monthlyUsd; })[0] || null;
+      }
+      function roomiest(list) {
+        return list.slice().sort(function (a, b) { return (b.hr == null ? -Infinity : b.hr) - (a.hr == null ? -Infinity : a.hr); })[0] || null;
+      }
+      var best = cheapest(roomy.length ? roomy : fits) || out.ranked[0] || null;
+      var pool = fits.length ? fits : out.ranked.filter(function (r) { return r.verdict === "tight"; });
+      setRec("bestFit", best, "Cheapest plan that fits with comfortable headroom.");
+      setRec("cheapestFit", cheapest(pool), "Lowest fee among fitting plans.");
+      setRec("mostHeadroom", roomiest(pool), "Largest capacity margin for growth and bursts.");
+      var portablePool = out.ranked.filter(function (r) { return PORT_RANK[r.d.portability.level] === 0; });
+      var pSrc = portablePool.length ? portablePool : out.ranked;
+      var pFits = pSrc.filter(function (r) { return r.verdict === "fits" || r.verdict === "tight"; });
+      setRec("mostPortable", (pFits.length ? pFits : pSrc).slice().sort(function (a, b) { return a.d.monthlyUsd - b.d.monthlyUsd; })[0] || null, "Best fitting plan that works in third-party tools.");
+      if (tasksLabel) tasksLabel.textContent = String(state.tasks);
+      if (floorLabel) floorLabel.textContent = String(state.floor);
+      if (budgetLabel) budgetLabel.textContent = state.noCap ? "No cap" : "$" + state.budget + "/mo";
+      document.querySelectorAll("[data-feetask]").forEach(function (el) {
+        var card = el.closest ? el.closest(".plan-card") : null;
+        var fee = card ? Number(card.getAttribute("data-fee")) : NaN;
+        if (!isFinite(fee)) return;
+        var per = fee / state.tasks;
+        el.textContent = "$" + fee + "/mo ≈ $" + (per < 1 ? per.toFixed(3) : per.toFixed(2)) + "/task at " + state.tasks + " tasks/mo";
+      });
+    }
+
+    function setRec(key, row, why) {
+      var nameEl = document.querySelector('[data-rec="' + key + '"]');
+      var whyEl = document.querySelector('[data-rec-why="' + key + '"]');
+      if (nameEl) nameEl.textContent = row ? row.d.name : "—";
+      if (whyEl && row) {
+        var extra = " · " + row.d.name + " " + VERDICT_LABEL[row.verdict].toLowerCase() + " at $" + row.d.monthlyUsd + "/mo.";
+        whyEl.textContent = why.replace(/\.$/, "") + extra;
+      } else if (whyEl) { whyEl.textContent = why; }
+    }
+
+    if (tasksEl) tasksEl.addEventListener("input", function () { state.tasks = Number(tasksEl.value) || 300; render(); });
+    if (floorEl) floorEl.addEventListener("input", function () { state.floor = Number(floorEl.value) || 40; render(); });
+    if (budgetEl) budgetEl.addEventListener("input", function () {
+      state.budget = Number(budgetEl.value) || 100;
+      if (state.budget >= 200) state.noCap = true; else if (!noCapBtn.getAttribute("aria-pressed") || noCapBtn.getAttribute("aria-pressed") !== "true") state.noCap = false;
+      syncNoCap();
+      render();
+    });
+    if (noCapBtn) noCapBtn.addEventListener("click", function () {
+      state.noCap = noCapBtn.getAttribute("aria-pressed") !== "true";
+      syncNoCap();
+      render();
+    });
+    if (toolsBtn) toolsBtn.addEventListener("click", function () {
+      state.toolsOnly = toolsBtn.getAttribute("aria-pressed") !== "true";
+      toolsBtn.setAttribute("aria-pressed", state.toolsOnly ? "true" : "false");
+      render();
+    });
+    function syncNoCap() {
+      if (!noCapBtn) return;
+      noCapBtn.setAttribute("aria-pressed", state.noCap ? "true" : "false");
+      if (state.noCap && budgetLabel) budgetLabel.textContent = "No cap";
+    }
+    document.querySelectorAll("[data-size]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.sizeId = btn.getAttribute("data-size") || "coding";
+        document.querySelectorAll("[data-size]").forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+        render();
+      });
+    });
+    document.querySelectorAll("[data-rhythm]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        state.rhythm = btn.getAttribute("data-rhythm") || "steady";
+        document.querySelectorAll("[data-rhythm]").forEach(function (b) { b.setAttribute("aria-pressed", b === btn ? "true" : "false"); });
+        render();
+      });
+    });
+    render();
+  })();
+</script>

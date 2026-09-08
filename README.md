@@ -21,7 +21,7 @@ The explorer includes:
 - Six weight sliders. Intelligence, coding, agentic, task cost, latency, throughput
 - Measured Artificial Analysis task cost when it exists. Labeled workload estimates otherwise
 - Hierarchical approximations for missing reasoning variants
-- Provider offers, compare (up to 3), Pareto scatters, CSV and JSON export
+- Provider offers, sticky header with pinnable rows, compare drawer (up to 5 models with best-value highlighting), Pareto scatters, CSV and JSON export
 - Canonical multi-source matrix from `npm run sync`
 
 ## Quick start
@@ -70,6 +70,7 @@ npm run sync
 | OpenRouter `models/find` | Provider offers, latency/throughput | None for public catalog |
 | Cursor CSV | Effort/fast/thinking variants + Cursor prices | CSV file (key only to regenerate) |
 | OpenCode Go seed | 28 Go models + published token prices + Zen endpoints | Bundled `data/opencode-go.json` |
+| Subscription plans | Claude Pro/Max + ChatGPT Plus/Pro/Business flat fees for `/subscriptions/` | Bundled `data/subscription-plans.json` (manual snapshot; quotas estimated) |
 
 Website pages (not APIs) feed Cursor pricing and OpenCode Go (CursorBench stays
 a manual snapshot — its results page is JS-rendered with no readable table).

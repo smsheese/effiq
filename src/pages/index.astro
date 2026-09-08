@@ -59,24 +59,24 @@ const cheapestCost = cheapest ? formatMoney(cheapest.taskCostUsd) : null;
         </h1>
         <p class="text-base leading-relaxed text-muted-foreground sm:text-lg">
           Compare LLM costs per task and rank <strong class="font-semibold text-foreground">reasoning variants</strong>
-          by capability per measured or estimated task dollar.
-          The default view keeps Artificial Analysis Intelligence at
+          {" "}by capability per measured or estimated task dollar.
+          The default view keeps Artificial Analysis Intelligence at{" "}
           <strong class="font-semibold text-foreground">40</strong> or more.
           The EQ (Effiq) Score is not fixed — it changes with your requirements:
           profile, weights, floors, and filters all move the ranking.
         </p>
         <div class="flex flex-wrap gap-3 pt-1">
           <a
-            href="/methodology/"
+            href="/about/#methodology"
             class="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-secondary"
           >
-            Scoring methodology
+            Scoring guide
           </a>
           <a
-            href="/api/models.json"
+            href="/subscriptions/"
             class="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
-            Download matrix
+            Compare subscriptions
           </a>
         </div>
       </header>
@@ -91,8 +91,8 @@ const cheapestCost = cheapest ? formatMoney(cheapest.taskCostUsd) : null;
           Top picks right now
         </h2>
         <p class="text-xs text-muted-foreground">
-          Matrix refreshed
-          <time datetime={timeAttr} class="font-medium text-foreground">{timeLabel}</time> (UTC).
+          Matrix refreshed{" "}
+          <time datetime={timeAttr} class="font-medium text-foreground">{timeLabel}</time> (UTC).{" "}
           <a href="/api/health" class="underline-offset-4 hover:underline">Freshness details</a>.
         </p>
       </div>
@@ -103,7 +103,7 @@ const cheapestCost = cheapest ? formatMoney(cheapest.taskCostUsd) : null;
         best && (
           <>
             The highest Effiq Score right now is <strong class="font-semibold text-foreground">{best.name}</strong>
-            at <strong class="font-semibold text-foreground">{best.score?.toFixed(1)}</strong>.
+            {" "}at <strong class="font-semibold text-foreground">{best.score?.toFixed(1)}</strong>.
           </>
         )
         }
@@ -111,7 +111,7 @@ const cheapestCost = cheapest ? formatMoney(cheapest.taskCostUsd) : null;
         cheapest && cheapestCost && (
           <>
             {" "}The cheapest qualifying task cost is <strong class="font-semibold text-foreground">{cheapestCost}</strong>
-            per task on <strong class="font-semibold text-foreground">{cheapest.name}</strong>.
+            {" "}per task on <strong class="font-semibold text-foreground">{cheapest.name}</strong>.
           </>
         )
         }

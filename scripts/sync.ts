@@ -20,6 +20,7 @@ import { adaptArtificialAnalysis } from "../src/lib/sources/artificial-analysis.
 import { adaptCursor, attachCursorBench, type CursorBenchCatalog, parseCsv } from "../src/lib/sources/cursor.ts";
 import { adaptOpenCodeGo, type OpenCodeGoCatalog } from "../src/lib/sources/opencode-go.ts";
 import { adaptOpenRouter, type OpenRouterCatalog } from "../src/lib/sources/openrouter.ts";
+import { parseSubscriptionCatalog } from "../src/lib/sources/subscriptions.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -63,6 +64,12 @@ const OPENCODE_GO_CANDIDATES = [
   process.env.OPENCODE_GO_JSON,
   path.join(OUT_DIR, "opencode-go.json"),
   path.join(OUT_DIR, "sources", "opencode-go.json"),
+];
+
+const SUBSCRIPTION_CANDIDATES = [
+  process.env.SUBSCRIPTION_PLANS_JSON,
+  path.join(OUT_DIR, "subscription-plans.json"),
+  path.join(OUT_DIR, "sources", "subscription-plans.json"),
 ];
 
 const OR_CACHE_DEFAULT = path.join(OUT_DIR, "models-cache.json");
@@ -297,6 +304,86 @@ async function loadOpenCodeGo(): Promise<{
   }
 }
 
+async function loadSubscriptions(): Promise<{
+  statusClaude: SyncManifest["sources"][0];
+  statusChatgpt: SyncManifest["sources"][0];
+  statusCursor: SyncManifest["sources"][0];
+}> {
+  const local = await resolveFirstExisting(SUBSCRIPTION_CANDIDATES);
+  const missing = {
+    statusClaude: {
+      id: "claude_subscription",
+      status: "error",
+      pulledAt: null,
+      rowCount: 0,
+      error: `Missing subscription seed (checked: ${SUBSCRIPTION_CANDIDATES.filter(Boolean).join(", ")})`,
+    },
+    statusChatgpt: {
+      id: "chatgpt_subscription",
+      status: "error",
+      pulledAt: null,
+      rowCount: 0,
+      error: `Missing subscription seed (checked: ${SUBSCRIPTION_CANDIDATES.filter(Boolean).join(", ")})`,
+    },
+    statusCursor: {
+      id: "cursor_subscription",
+      status: "error",
+      pulledAt: null,
+      rowCount: 0,
+      error: `Missing subscription seed (checked: ${SUBSCRIPTION_CANDIDATES.filter(Boolean).join(", ")})`,
+    },
+  } as const;
+  if (!local) {
+    return {
+      statusClaude: { ...missing.statusClaude },
+      statusChatgpt: { ...missing.statusChatgpt },
+      statusCursor: { ...missing.statusCursor },
+    };
+  }
+  try {
+    const text = await readFile(local, "utf8");
+    const catalog = parseSubscriptionCatalog(JSON.parse(text));
+    const rows = (source: string) => catalog.plans.filter((p) => p.source === source).length;
+    // Re-write the seed validated so typos and bucket drift fail the sync loudly.
+    await writeFile(local, JSON.stringify(catalog, null, 2) + "\n", "utf8");
+    const ok = (id: "claude_subscription" | "chatgpt_subscription" | "cursor_subscription", rowCount: number): SyncManifest["sources"][0] => ({
+      id,
+      status: "ok",
+      pulledAt: catalog.observedAt,
+      rowCount,
+    });
+    return {
+      statusClaude: ok("claude_subscription", rows("claude_subscription")),
+      statusChatgpt: ok("chatgpt_subscription", rows("chatgpt_subscription")),
+      statusCursor: ok("cursor_subscription", rows("cursor_subscription")),
+    };
+  } catch (err) {
+    return {
+      statusClaude: {
+        id: "claude_subscription",
+        status: "error",
+        pulledAt: null,
+        rowCount: 0,
+        error: (err as Error).message,
+      },
+      statusChatgpt: {
+        id: "chatgpt_subscription",
+        status: "error",
+        pulledAt: null,
+        rowCount: 0,
+        error: (err as Error).message,
+      },
+      statusCursor: {
+        id: "cursor_subscription",
+        status: "error",
+        pulledAt: null,
+        rowCount: 0,
+        error: (err as Error).message,
+      },
+    };
+  }
+}
+
 async function loadOpenRouter(): Promise<{
   data: OpenRouterCatalog | null;
   status: SyncManifest["sources"][0];
@@ -393,6 +480,7 @@ async function main() {
     const or = await loadOpenRouter();
     const benchCatalog = await loadCursorBench();
     const go = await loadOpenCodeGo();
+    const subs = await loadSubscriptions();
 
     const observedAt = new Date().toISOString();
     const aaVariants = adaptArtificialAnalysis(aa.records, aa.pulledAt, aa.version);
@@ -419,6 +507,9 @@ async function main() {
       cursor.status,
       or.status,
       go.status,
+      subs.statusClaude,
+      subs.statusChatgpt,
+      subs.statusCursor,
       {
         id: "kilocode",
         status: "skipped",

@@ -11,12 +11,17 @@ How **effiq** ingests model evidence, what auth each source needs, and how to en
 | **Cursor** | `src/lib/sources/cursor.ts` | Bundled `data/cursor-models.csv`, or `CURSOR_MODELS_CSV` export; `CURSOR_API_KEY` only to regenerate CSV offline | `data/cursor-models.csv` (bundled) or `CURSOR_MODELS_CSV`; refreshed by `npm run sync:agent` |
 | **CursorBench** | `src/lib/sources/cursor.ts` | Bundled `data/cursorbench.json` from [CursorBench](https://cursor.com/cursorbench) | Manual snapshot per official release (page is JS-rendered; not agent-safe) |
 | **OpenCode Go** | `src/lib/sources/opencode-go.ts` | Bundled `data/opencode-go.json` from [OpenCode Go](https://opencode.ai/docs/go/) | `data/opencode-go.json` (bundled) or `OPENCODE_GO_JSON`; refreshed by `npm run sync:agent` |
+| **Claude subscriptions** | `src/lib/sources/subscriptions.ts` | Manual `data/subscription-plans.json` snapshot from [Claude pricing](https://claude.com/pricing) (Pro $20, Max 5x $100, Max 20x $200) | Bundled seed or `SUBSCRIPTION_PLANS_JSON`; opt-in refresh `--only claude_sub` |
+| **ChatGPT subscriptions** | `src/lib/sources/subscriptions.ts` | Manual `data/subscription-plans.json` snapshot from [ChatGPT pricing](https://openai.com/chatgpt/pricing/) (Plus $20, Pro $200, Business ~$25/seat) | Bundled seed or `SUBSCRIPTION_PLANS_JSON`; auto-refresh disabled (prices render client-side — same confabulation guard as CursorBench) |
+| **Cursor subscriptions** | `src/lib/sources/subscriptions.ts` | Manual `data/subscription-plans.json` snapshot from [Cursor models & pricing](https://cursor.com/docs/models-and-pricing) (Pro $20, Pro Plus $60, Ultra $200, Teams Standard $40/seat, Premium $120/seat) | Bundled seed or `SUBSCRIPTION_PLANS_JSON` |
+| **Metered budgets** | `src/lib/sources/subscriptions.ts` | Derived comparison tiers in the same seed: OpenRouter $20/$50/$100 pay-as-you-go budgets, OpenCode Go $20/$50/$100 ($10 membership + Zen credits) | Same seed; burn priced from measured tariffs (Zen offer tariffs via `tariffChannel`) |
 
-Website-sourced seeds (Cursor pricing, OpenCode Go) have no API, but both docs
-sites serve machine-readable markdown at `.md` endpoints
-(`cursor.com/docs/models-and-pricing.md`, `opencode.ai/docs/go.md`).
-`scripts/agent_refresh.py` (`npm run sync:agent`) fetches that markdown and
-extracts rows with an OpenRouter chat model (temperature 0, JSON-only) into the
+Website-sourced seeds (Cursor pricing, OpenCode Go) have no API. The Cursor
+docs site dropped its machine-readable `.md` endpoint (404 since 2026-09-08),
+so `scripts/agent_refresh.py` (`npm run sync:agent`) fetches the HTML docs
+page for Cursor (`cursor.com/docs/models-and-pricing`) and the markdown
+endpoint for OpenCode Go (`opencode.ai/docs/go.md`) and extracts rows with an
+OpenRouter chat model (temperature 0, JSON-only) into the
 seed files. Merges are update-only: prices update in place, new models
 appended, nothing deleted. Guards: a minimum-row count rejects partial
 extractions, and fast-mode CSV rows only ever take prices from explicit
@@ -40,7 +45,25 @@ Outputs of sync:
 
 Manual crosswalk seeds: `data/crosswalks.json`.
 
-Bundled input seeds: `data/aa-catalog.json`, `data/cursor-models.csv`, `data/cursorbench.json`, `data/opencode-go.json`.
+Bundled input seeds: `data/aa-catalog.json`, `data/cursor-models.csv`, `data/cursorbench.json`, `data/opencode-go.json`, `data/subscription-plans.json`.
+
+Subscription plans are flat fees, not per-token offers, so they validate
+through `parseSubscriptionCatalog` (unknown ids, bucket drift, bad capacity
+ranges, and empty model families fail the sync) and surface on
+`/subscriptions/` — never merged into Effiq Score variants. Each plan carries
+`modelFamilies` (matrix slugs, smartest first), an optional `burnFamilies`
+range for Cursor pool math, and a `capacity` object in the plan's native unit:
+Claude in weekly Sonnet-equiv hours (Pro 40–80, Max 5x 140–280 + 15–35 Opus,
+Max 20x derived 4× — all from Anthropic announcements), Cursor in monthly
+API-dollar pools (included value ≈ fee, community consensus; mechanism
+official), ChatGPT in Codex messages per 5h session (Plus Sol 10–100 through
+Pro 20x 200–2000, official Codex pricing). Capacity basis is labeled
+`official` / `community` / `derived` throughout. `src/lib/subscriptionAdvisor.ts`
+holds the pure fit logic (task sizes from workload templates, verdicts,
+ranking) with unit tests; the page embeds its output as JSON and mirrors the
+arithmetic in an inline script. ChatGPT Pro now has two tiers (Pro 100 at $100
+= 5x Plus, Pro 200 at $200 = 20x Plus, per the official help center — no annual
+billing on Plus/Pro). No Anthropic/OpenAI API key would add firmer data.
 
 ## Stubbed / not enabled
 

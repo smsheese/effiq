@@ -28,6 +28,9 @@ export type SourceId =
   | "openrouter"
   | "cursor"
   | "opencode"
+  | "claude_subscription"
+  | "chatgpt_subscription"
+  | "cursor_subscription"
   | "kilocode"
   | "whatllm"
   | "llm_stats"
@@ -257,4 +260,109 @@ export const EFFORT_ORDER: EffortLevel[] = [
 export function effortRank(effort: EffortLevel): number {
   const i = EFFORT_ORDER.indexOf(effort);
   return i >= 0 ? i : -1;
+}
+
+/**
+ * Flat-fee coding subscription plans (Claude Pro/Max, ChatGPT Plus/Pro).
+ * Prices are measured (published list prices); usage quotas are estimated
+ * because vendors state them as prose ("5x Pro", "expanded Codex") with no
+ * machine-readable quota API. Kept separate from per-token ProviderOffer
+ * scoring — see the /subscriptions/ comparison page.
+ */
+
+export type SubscriptionBucket = "upto-20" | "upto-50" | "upto-100" | "over-100";
+
+export type SubscriptionSource =
+  | "claude_subscription"
+  | "chatgpt_subscription"
+  | "cursor_subscription"
+  | "openrouter"
+  | "opencode";
+
+/**
+ * Included-consumption estimate in the plan's native unit. Vendors never
+ * share a unit: Claude caps weekly hours, Cursor caps monthly API-dollar
+ * pools, ChatGPT caps messages per 5h window. The advisor judges each plan
+ * in its own unit — no fake cross-unit conversions.
+ */
+export type CapacityUnit = "weekly_hours" | "monthly_usd" | "session_messages";
+
+export type CapacityBasis = "official" | "community" | "derived";
+
+export interface PlanCapacity {
+  unit: CapacityUnit;
+  low: number;
+  high: number;
+  basis: CapacityBasis;
+  /** Short label of what the numbers mean, e.g. "Sonnet-equiv hrs/wk". */
+  ref: string;
+  note?: string | null;
+}
+
+/**
+ * Whether the subscription auth works outside the vendor's own harness.
+ * Harness lock-in (or ban risk in third-party tools) is the biggest plan
+ * factor after monthly cost and intelligence.
+ */
+export type PortabilityLevel = "open" | "vendor_tools_only" | "harness_locked";
+
+export interface PlanPortability {
+  level: PortabilityLevel;
+  /** Tools the subscription officially works with. */
+  tools: string;
+  /** Ban/ToS caveat shown in the UI; null when none known. */
+  riskNote: string | null;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  provider: "Claude" | "ChatGPT" | "Cursor" | "OpenRouter" | "OpenCode Go";
+  name: string;
+  monthlyUsd: number;
+  annualUsdPerMo: number | null;
+  bucket: SubscriptionBucket;
+  source: SubscriptionSource;
+  sourceUrl: string;
+  observedAt: string;
+  includesClaudeCode: boolean;
+  codexAccess: "none" | "limited" | "expanded" | "maximum";
+  /** Override for the coding-access cell (e.g. Cursor Agent + Tab). */
+  accessLabel?: string | null;
+  /** Matrix familySlugs usable on this plan, smartest first. */
+  modelFamilies: string[];
+  /** Families spanning cheap→pricey burn for Cursor pool math. Defaults to modelFamilies. */
+  burnFamilies?: string[] | null;
+  /**
+   * Prefer per-token tariffs from this channel's offers (e.g. Zen prices for
+   * OpenCode Go) instead of merged metric tariffs when pricing burn.
+   */
+  tariffChannel?: "openrouter" | "cursor" | "opencode" | null;
+  /** Included consumption in the plan's native unit (see PlanCapacity). */
+  capacity: PlanCapacity;
+  /** Where the subscription auth can be used (third-party harnesses vs vendor tools only). */
+  portability: PlanPortability;
+  usageWindow5h: string | null;
+  weeklyLimit: string | null;
+  overageCredits: boolean;
+  priceStatus: "measured" | "estimated";
+  quotaStatus: "estimated";
+  notes: string | null;
+}
+
+export interface SubscriptionCatalog {
+  observedAt: string;
+  plans: SubscriptionPlan[];
+}
+
+export function subscriptionBucketForPrice(monthlyUsd: number): SubscriptionBucket {
+  if (monthlyUsd <= 20) return "upto-20";
+  if (monthlyUsd <= 50) return "upto-50";
+  if (monthlyUsd <= 100) return "upto-100";
+  return "over-100";
+}
+
+/** Effective flat-fee cost per task at a given monthly task volume. */
+export function subscriptionCostPerTask(monthlyUsd: number, tasksPerMonth: number): number | null {
+  if (!Number.isFinite(monthlyUsd) || !Number.isFinite(tasksPerMonth) || tasksPerMonth <= 0) return null;
+  return monthlyUsd / tasksPerMonth;
 }

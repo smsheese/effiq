@@ -1,6 +1,6 @@
 ---
 interface Props {
-  current?: "home" | "methodology" | "about" | "none";
+  current?: "home" | "about" | "subscriptions" | "none";
   compact?: boolean;
 }
 
@@ -32,11 +32,11 @@ const navClass = (id: string) =>
         Explorer
       </a>
       <a
-        href="/methodology/"
-        class={navClass("methodology")}
-        aria-current={current === "methodology" ? "page" : undefined}
+        href="/subscriptions/"
+        class={navClass("subscriptions")}
+        aria-current={current === "subscriptions" ? "page" : undefined}
       >
-        Methodology
+        Subscriptions
       </a>
       <a
         href="/about/"
@@ -45,19 +45,21 @@ const navClass = (id: string) =>
       >
         About
       </a>
-      <a
-        href="/api/models.json"
-        class="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
-      >
-        Matrix JSON
-      </a>
     </nav>
     <div class="ml-auto flex items-center gap-3">
-      {!compact && (
-        <p class="hidden max-w-md truncate text-sm text-muted-foreground lg:block">
-          Capability per task dollar · OpenRouter, Cursor &amp; OpenCode Go
-        </p>
-      )}
+      <button
+        type="button"
+        data-tally-open="1AeRVl"
+        data-tally-align-left="1"
+        data-tally-emoji-text="👋"
+        data-tally-emoji-animation="wave"
+        data-tally-auto-close="2000"
+        class="hidden items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-muted sm:inline-flex"
+        title="Send feedback (Tally)"
+        aria-label="Send feedback"
+      >
+        Feedback
+      </button>
       <button
         type="button"
         id="theme-toggle"

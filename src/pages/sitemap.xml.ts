@@ -11,8 +11,8 @@ export const GET: APIRoute = ({ site }) => {
   const lastmod = new Date(loadMatrix().generatedAt).toISOString().slice(0, 10);
   const urls = [
     { loc: `${origin}/` },
-    { loc: `${origin}${PAGES.methodology.path}` },
     { loc: `${origin}${PAGES.about.path}` },
+    { loc: `${origin}${PAGES.subscriptions.path}` },
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>

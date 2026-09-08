@@ -198,3 +198,89 @@
     @apply font-sans;
     }
 }
+
+/* Scrolling marquee for long model names (table title column). The inner
+   content is duplicated once so a -50% loop is seamless. */
+@keyframes effiq-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-inner {
+  display: inline-block;
+  white-space: nowrap;
+  animation: effiq-marquee 9s linear infinite;
+}
+
+.marquee:hover .marquee-inner {
+  animation-play-state: paused;
+}
+
+/* Explorer table sticks to the page (no scroll-container ancestor), so the
+   header and pinned rows track the site header via measured CSS vars that
+   ModelExplorer sets in JS (--effiq-sticky-top, --effiq-pin-top). */
+.effiq-explorer-table thead {
+  position: sticky;
+  top: var(--effiq-sticky-top, 4rem);
+  z-index: 30;
+}
+
+.effiq-explorer-table thead th {
+  background: var(--color-card);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 0 0 color-mix(in oklab, var(--color-foreground) 6%, transparent);
+}
+
+.effiq-explorer-table tr[data-pinned="true"] > td {
+  position: sticky;
+  top: var(--effiq-pin-top, 105px);
+  z-index: 20;
+  background: var(--color-card);
+  box-shadow: 0 1px 0 0 var(--color-border);
+}
+
+/* Compare pick: envelope flies from the row button to the floating
+   compare button (top right). */
+.effiq-compare-fly {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  animation: effiq-fly 0.65s cubic-bezier(0.45, -0.25, 0.65, 0.35) forwards;
+}
+
+@keyframes effiq-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--fly-dx, 0px), var(--fly-dy, 0px)) scale(0.35);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .effiq-compare-fly {
+    animation-duration: 0.01s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-inner {
+    animation: none;
+  }
+}

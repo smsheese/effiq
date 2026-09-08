@@ -3,7 +3,7 @@
 const EXAMPLE_HOST_RE = /(^|\.)example\.(com|org|net)$/i;
 const LOCAL_HOST_RE = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
 
-export type SitePageId = "home" | "methodology" | "about" | "notFound";
+export type SitePageId = "home" | "about" | "subscriptions" | "notFound";
 
 export interface SitePageMeta {
   id: SitePageId;
@@ -28,29 +28,29 @@ export const PAGES: Record<SitePageId, SitePageMeta> = {
     ogImage: "/og.png",
     heading: "LLM cost comparison, ranked per task dollar",
   },
-  methodology: {
-    id: "methodology",
-    path: "/methodology/",
-    title: "Methodology — how effiq ranks model efficiency",
-    description:
-      "How effiq ranks reasoning variants: intelligence floor, Effiq Score weights, sources, profiles, approximations, and data freshness.",
-    ogImage: "/og-methodology.png",
-    heading: "Methodology",
-  },
   about: {
     id: "about",
     path: "/about/",
-    title: "About — who builds effiq",
+    title: "About & scoring guide — who builds effiq and how ranking works",
     description:
-      "Who builds effiq, why the project ranks capability per task dollar, and how to reach the maintainer.",
+      "Who builds effiq, why it ranks capability per task dollar, and the full scoring guide: defaults, sources, Effiq Score computation, usage profiles, estimation ladder, and data freshness.",
     ogImage: "/og.png",
     heading: "About effiq",
+  },
+  subscriptions: {
+    id: "subscriptions",
+    path: "/subscriptions/",
+    title: "Best coding subscription plans by budget — Claude vs ChatGPT vs Cursor | effiq",
+    description:
+      "Advisor for Claude, ChatGPT, Cursor, OpenRouter, and OpenCode Go coding spend: included consumption in each plan's own unit, smartest-model intelligence, task-size and rhythm controls, and fit verdicts per budget.",
+    ogImage: "/og.png",
+    heading: "Coding subscriptions, compared per budget",
   },
   notFound: {
     id: "notFound",
     path: "/404/",
     title: "Page not found — effiq",
-    description: "This URL is not a page on effiq. The model explorer and the methodology page remain available.",
+    description: "This URL is not a page on effiq. The model explorer and the about page remain available.",
     ogImage: "/og.png",
     heading: "Page not found",
   },

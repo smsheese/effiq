@@ -8,6 +8,7 @@ import {
   buildJsonLdGraph,
   websiteJsonLd,
   datasetJsonLd,
+  PAGES,
 } from "./site";
 
 describe("site url helpers", () => {
@@ -36,11 +37,11 @@ describe("site url helpers", () => {
     const site = "https://effiq.pages.dev/";
     expect(absoluteUrl(site, "/og.png")).toBe("https://effiq.pages.dev/og.png");
     expect(
-      canonicalFromAstroUrl(site, new URL("https://effiq.pages.dev/methodology/")),
-    ).toBe("https://effiq.pages.dev/methodology/");
+      canonicalFromAstroUrl(site, new URL("https://effiq.pages.dev/about/")),
+    ).toBe("https://effiq.pages.dev/about/");
     expect(
-      canonicalFromAstroUrl(site, new URL("https://effiq.pages.dev/methodology")),
-    ).toBe("https://effiq.pages.dev/methodology/");
+      canonicalFromAstroUrl(site, new URL("https://effiq.pages.dev/about")),
+    ).toBe("https://effiq.pages.dev/about/");
     expect(
       canonicalFromAstroUrl(site, new URL("https://effiq.pages.dev/404/")),
     ).toBe("https://effiq.pages.dev/");
@@ -56,5 +57,10 @@ describe("site url helpers", () => {
     expect(dumped).toContain("Dataset");
     expect(dumped).toContain("Organization");
     expect(dumped).not.toContain("LocalBusiness");
+  });
+
+  it("registers the subscriptions comparison page", () => {
+    expect(PAGES.subscriptions.path).toBe("/subscriptions/");
+    expect(PAGES.subscriptions.title).toMatch(/subscription/i);
   });
 });
