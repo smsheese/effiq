@@ -2,7 +2,7 @@
   "benchmark": "OpenCode Go",
   "url": "https://opencode.ai/docs/go/",
   "modelsUrl": "https://opencode.ai/zen/go/v1/models",
-  "observedAt": "2026-09-07T00:00:00.000Z",
+  "observedAt": "2026-09-08T08:37:50Z",
   "description": "OpenCode Go $10/month subscription: published per-1M-token prices for open coding models served via OpenCode Zen Go endpoints. Base tiers used where docs list tiered pricing; peak/off-peak noted per model.",
   "results": [
     {
@@ -39,7 +39,7 @@
       "priceCacheReadUsdPerMillion": 0.03,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 15,
-      "notes": null
+      "notes": "Monthly usage $15."
     },
     {
       "modelId": "glm-5.3",
@@ -51,7 +51,7 @@
       "priceCacheReadUsdPerMillion": 0.26,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 15,
-      "notes": null
+      "notes": "Monthly usage $15."
     },
     {
       "modelId": "glm-5.2",
@@ -63,7 +63,7 @@
       "priceCacheReadUsdPerMillion": 0.26,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "glm-5.1",
@@ -75,7 +75,7 @@
       "priceCacheReadUsdPerMillion": 0.26,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "kimi-k3",
@@ -87,7 +87,7 @@
       "priceCacheReadUsdPerMillion": 0.3,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 15,
-      "notes": null
+      "notes": "Monthly usage $15."
     },
     {
       "modelId": "kimi-k2.7-code",
@@ -99,7 +99,7 @@
       "priceCacheReadUsdPerMillion": 0.19,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "kimi-k2.6",
@@ -111,7 +111,7 @@
       "priceCacheReadUsdPerMillion": 0.16,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "longcat-2.0",
@@ -123,7 +123,7 @@
       "priceCacheReadUsdPerMillion": 0.006,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "mimo-v2.5",
@@ -135,7 +135,7 @@
       "priceCacheReadUsdPerMillion": 0.0028,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "mimo-v2.5-pro",
@@ -147,7 +147,7 @@
       "priceCacheReadUsdPerMillion": 0.003625,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 15,
-      "notes": null
+      "notes": "Monthly usage $15."
     },
     {
       "modelId": "minimax-m3",
@@ -159,7 +159,7 @@
       "priceCacheReadUsdPerMillion": 0.06,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "minimax-m2.7",
@@ -171,7 +171,7 @@
       "priceCacheReadUsdPerMillion": 0.06,
       "priceCacheWriteUsdPerMillion": 0.375,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "minimax-m2.5",
@@ -219,7 +219,7 @@
       "priceCacheReadUsdPerMillion": 0.25,
       "priceCacheWriteUsdPerMillion": 2.5,
       "monthlyUsageUsd": 15,
-      "notes": null
+      "notes": "Monthly usage $15."
     },
     {
       "modelId": "qwen3.8-flash",
@@ -231,7 +231,7 @@
       "priceCacheReadUsdPerMillion": 0.016,
       "priceCacheWriteUsdPerMillion": 0.2,
       "monthlyUsageUsd": 30,
-      "notes": null
+      "notes": "Monthly usage $30."
     },
     {
       "modelId": "qwen3.7-max",
@@ -243,7 +243,7 @@
       "priceCacheReadUsdPerMillion": 0.5,
       "priceCacheWriteUsdPerMillion": 3.125,
       "monthlyUsageUsd": 30,
-      "notes": null
+      "notes": "Monthly usage $30."
     },
     {
       "modelId": "qwen3.7-plus",
@@ -315,7 +315,7 @@
       "priceCacheReadUsdPerMillion": 0.042,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 30,
-      "notes": null
+      "notes": "Monthly usage $30."
     },
     {
       "modelId": "hy3",
@@ -327,7 +327,7 @@
       "priceCacheReadUsdPerMillion": 0.035,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 60,
-      "notes": null
+      "notes": "Monthly usage $60."
     },
     {
       "modelId": "omen-alpha",
@@ -339,7 +339,7 @@
       "priceCacheReadUsdPerMillion": 0.04,
       "priceCacheWriteUsdPerMillion": null,
       "monthlyUsageUsd": 100,
-      "notes": null
+      "notes": "Monthly usage $100."
     }
   ]
 }

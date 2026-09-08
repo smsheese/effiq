@@ -1,30 +1,30 @@
 {
   "schemaVersion": 1,
   "estimatorVersion": "1.0.0",
-  "generatedAt": "2026-09-07T08:54:56.619Z",
+  "generatedAt": "2026-09-08T08:37:54.088Z",
   "sources": [
     {
       "id": "artificial_analysis",
       "status": "ok",
-      "pulledAt": "2026-09-07T08:54:55.667Z",
-      "rowCount": 643
+      "pulledAt": "2026-09-08T08:37:53.051Z",
+      "rowCount": 644
     },
     {
       "id": "cursor",
       "status": "ok",
-      "pulledAt": "2026-09-07T08:54:55.686Z",
+      "pulledAt": "2026-09-08T08:37:53.068Z",
       "rowCount": 363
     },
     {
       "id": "openrouter",
       "status": "ok",
-      "pulledAt": "2026-09-07T08:54:56.508Z",
-      "rowCount": 982
+      "pulledAt": "2026-09-08T08:37:53.976Z",
+      "rowCount": 980
     },
     {
       "id": "opencode",
       "status": "ok",
-      "pulledAt": "2026-09-07T00:00:00.000Z",
+      "pulledAt": "2026-09-08T08:37:50Z",
       "rowCount": 28
     },
     {
@@ -49,10 +49,10 @@
       "error": "Guarded scraper disabled until robots/terms check passes"
     }
   ],
-  "variantCount": 1184,
-  "unmatched": 525,
+  "variantCount": 1185,
+  "unmatched": 493,
   "changesFromPrevious": {
-    "added": 0,
+    "added": 1,
     "removed": 0,
     "updated": 1184
   }
