@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Content Security Policy: the live data bucket (`https://a.effiq.shee.se`) was missing from `connect-src`, so the explorer's bucket fetch was blocked in production; also allowed the Cloudflare Web Analytics beacon (`static.cloudflareinsights.com` for script/connect) that Pages injects.
+
 ## [0.3.0] - 2026-09-08
 
 ### Changed
