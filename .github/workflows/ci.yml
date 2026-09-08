@@ -29,12 +29,17 @@ jobs:
 
       - name: Pull current matrix from R2
         # Generated data files are not tracked in git; CI needs them for the
-        # prerendered /api routes and the build. Fails loudly when the bucket
-        # URL is not configured.
+        # prerendered /api routes and the build. Primary source is the public
+        # bucket; if it is unreachable or not populated yet, fall back to a
+        # keyless sync from the bundled seed files.
         env:
           PUBLIC_MATRIX_URL: ${{ vars.PUBLIC_MATRIX_URL }}
         run: |
-          node scripts/fetch-data.mjs
+          node scripts/fetch-data.mjs || true
+          if [ ! -f data/models-matrix.json ]; then
+            echo "Bucket copy unavailable — syncing from bundled seeds"
+            npm run sync
+          fi
           if [ ! -f data/models-matrix.json ]; then
             echo "::error::No models-matrix.json available — set the PUBLIC_MATRIX_URL repo variable (or run npm run sync locally)"
             exit 1
