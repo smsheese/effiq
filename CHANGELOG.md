@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-08
+
 ### Changed
 
 - Data distribution moved from git to a public S3-compatible bucket (Cloudflare R2). The daily sync workflow no longer commits generated files (no more `chore(data)` bot commits and rebuild churn): it uploads `models-matrix.json/.csv` + `sync-manifest.json` to `<prefix>/latest/`, archiving the previous latest under its `generatedAt` timestamp in `<prefix>/archive/`. The explorer now fetches the live bucket copy (`PUBLIC_MATRIX_URL`) with the prerendered `/api/models.json` as fallback, so daily data updates reach users without a rebuild or redeploy; a freshness label ("rankings updated X ago") shows the data age. Generated files are gitignored and untracked — regenerate locally with `npm run sync` or pull with `npm run data:pull` (`scripts/fetch-data.mjs`). CI pulls current data from the bucket before building.

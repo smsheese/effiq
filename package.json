@@ -1,7 +1,7 @@
 {
   "name": "effiq",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "effiq — rank LLM reasoning variants by capability per task dollar",
   "engines": {
     "node": ">=22.12.0"

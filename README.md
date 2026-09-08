@@ -10,7 +10,7 @@ The site compares capability against cost at each effort level
 (`low` / `medium` / `high` / `xhigh` / `max`) across OpenRouter, Cursor,
 OpenCode Go, and Artificial Analysis.
 
-> Status: **v0.2.0**. Cloudflare Pages hosts the static build. A GitHub Actions workflow refreshes the model matrix each day and publishes it to a public S3/R2 bucket; the explorer reads the live data, so updates need no redeploy.
+> Status: **v0.3.0**. Cloudflare Pages hosts the static build. A GitHub Actions workflow refreshes the model matrix each day and publishes it to a public S3/R2 bucket; the explorer reads the live data, so updates need no redeploy.
 
 ## Features
 

@@ -2,7 +2,7 @@
 
 How **effiq** ingests model evidence, what auth each source needs, and how to enable it.
 
-## Active sources (v0.2.0)
+## Active sources (v0.3.0)
 
 | Source | Adapter | Auth | Enable |
 |--------|---------|------|--------|
