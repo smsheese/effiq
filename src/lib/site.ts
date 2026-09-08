@@ -1,5 +1,7 @@
 /** Site URL helpers for metadata, discovery files, and build validation. */
 
+import { MATRIX_CSV_URL, MATRIX_JSON_URL, absoluteMatrixUrl } from "@/lib/data-url";
+
 const EXAMPLE_HOST_RE = /(^|\.)example\.(com|org|net)$/i;
 const LOCAL_HOST_RE = /^(localhost|127\.0\.0\.1|\[::1\])$/i;
 
@@ -179,12 +181,14 @@ export function webApplicationJsonLd(site: string, generatedAt?: string) {
 }
 
 export function datasetJsonLd(site: string, generatedAt?: string) {
+  const jsonUrl = absoluteMatrixUrl(site, MATRIX_JSON_URL);
+  const csvUrl = absoluteMatrixUrl(site, MATRIX_CSV_URL);
   return {
     "@type": "Dataset",
     name: "effiq models matrix",
     description:
       "The canonical matrix lists LLM reasoning variants with measured and estimated task costs, latency, throughput, and domain scores.",
-    url: absoluteUrl(site, "/api/models.json"),
+    url: jsonUrl,
     isAccessibleForFree: true,
     ...(generatedAt ? { dateModified: generatedAt } : {}),
     license: "https://github.com/smsheese/effiq/blob/main/LICENSE",
@@ -193,12 +197,12 @@ export function datasetJsonLd(site: string, generatedAt?: string) {
       {
         "@type": "DataDownload",
         encodingFormat: "application/json",
-        contentUrl: absoluteUrl(site, "/api/models.json"),
+        contentUrl: jsonUrl,
       },
       {
         "@type": "DataDownload",
         encodingFormat: "text/csv",
-        contentUrl: absoluteUrl(site, "/api/models.csv"),
+        contentUrl: csvUrl,
       },
     ],
     variableMeasured: [

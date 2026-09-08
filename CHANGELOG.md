@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Data distribution moved from git to a public S3-compatible bucket (Cloudflare R2). The daily sync workflow no longer commits generated files (no more `chore(data)` bot commits and rebuild churn): it uploads `models-matrix.json/.csv` + `sync-manifest.json` to `<prefix>/latest/`, archiving the previous latest under its `generatedAt` timestamp in `<prefix>/archive/`. The explorer now fetches the live bucket copy (`PUBLIC_MATRIX_URL`) with the prerendered `/api/models.json` as fallback, so daily data updates reach users without a rebuild or redeploy; a freshness label ("rankings updated X ago") shows the data age. Generated files are gitignored and untracked — regenerate locally with `npm run sync` or pull with `npm run data:pull` (`scripts/fetch-data.mjs`). CI pulls current data from the bucket before building.
+- Dataset URLs advertised in `llms.txt` and the Dataset JSON-LD now point at the public bucket URLs (falling back to the baked `/api/models.json|csv` routes when `PUBLIC_MATRIX_URL` is unset).
+
 ### Added
 
 - Explorer table: page-level sticky header and pinnable rows. The table is no longer boxed in a scrolling container — it spans the page (narrow viewports scroll the page horizontally) so the header row sticks to the top of the viewport just under the site header, and each row has a pin toggle (max 3) that keeps it visible below the header for side-by-side comparison, with pinned rows floated to the top of the table. Sticky offsets are measured in JS (`--effiq-sticky-top`, `--effiq-pin-top`) so pinned rows stack without overlap.

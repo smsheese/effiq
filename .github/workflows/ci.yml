@@ -27,6 +27,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Pull current matrix from R2
+        # Generated data files are not tracked in git; CI needs them for the
+        # prerendered /api routes and the build. Fails loudly when the bucket
+        # URL is not configured.
+        env:
+          PUBLIC_MATRIX_URL: ${{ vars.PUBLIC_MATRIX_URL }}
+        run: |
+          node scripts/fetch-data.mjs
+          if [ ! -f data/models-matrix.json ]; then
+            echo "::error::No models-matrix.json available — set the PUBLIC_MATRIX_URL repo variable (or run npm run sync locally)"
+            exit 1
+          fi
+
       - name: Unit tests
         run: npm test
 

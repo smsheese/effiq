@@ -1,9 +1,12 @@
 import type { APIRoute } from "astro";
+import { MATRIX_CSV_URL, MATRIX_JSON_URL, absoluteMatrixUrl } from "@/lib/data-url";
 
 export const prerender = true;
 
 export const GET: APIRoute = ({ site }) => {
   const origin = (site?.origin ?? "http://localhost:4321").replace(/\/$/, "");
+  const matrixJson = absoluteMatrixUrl(origin, MATRIX_JSON_URL);
+  const matrixCsv = absoluteMatrixUrl(origin, MATRIX_CSV_URL);
   const body = `# effiq
 > effiq ranks LLM reasoning variants by capability per measured or estimated task dollar.
 
@@ -13,8 +16,8 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 - Home / explorer: ${origin}/
 - About + scoring guide: ${origin}/about/ (project background and the full methodology: defaults, sources, Effiq Score, profiles, estimation ladder, freshness)
 - Coding subscriptions by budget: ${origin}/subscriptions/ (plan advisor: consumption fit, smartest-model intelligence, task-size and rhythm controls)
-- Models matrix (JSON): ${origin}/api/models.json
-- Models matrix (CSV): ${origin}/api/models.csv
+- Models matrix (JSON): ${matrixJson}
+- Models matrix (CSV): ${matrixCsv}
 - Health / data freshness: ${origin}/api/health
 - Sitemap: ${origin}/sitemap.xml
 - Robots: ${origin}/robots.txt
@@ -27,7 +30,7 @@ effiq is a static public site. It scores OpenRouter, Cursor, and OpenCode Go mod
 - The default intelligence floor is 40. Visitors can change metric weights
 - The EQ (Effiq) Score is not fixed: it changes with visitor requirements (profile, weights, floors, filters)
 - Artificial Analysis measured task cost is the primary cost evidence
-- The matrix refreshes daily at 04:00 UTC; /api/health reports age and status
+- The matrix refreshes daily at 04:00 UTC and is served from a public S3-compatible bucket; the explorer fetches it live, so data updates need no redeploy
 `;
 
   return new Response(body, {

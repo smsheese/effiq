@@ -64,6 +64,7 @@ import {
   X,
 } from "lucide-react";
 import { getModelParent } from "@/lib/parents";
+import { MATRIX_CSV_URL, MATRIX_JSON_URL } from "@/lib/data-url";
 
 const ParetoScatter = React.lazy(() =>
   import("@/components/ParetoScatter").then((m) => ({ default: m.ParetoScatter })),
@@ -169,6 +170,18 @@ function fmtMoney(n: number | null | undefined): string {
 function fmtNum(n: number | null | undefined, d = 1): string {
   if (n == null || !Number.isFinite(n)) return "—";
   return n.toFixed(d);
+}
+
+/** Human age of an ISO timestamp, e.g. "3h ago". */
+function ageLabel(iso: string | undefined): string {
+  if (!iso) return "";
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
 }
 
 function parseBound(s: string): number | null {
@@ -423,6 +436,7 @@ export function ModelExplorer() {
   const [pinned, setPinned] = React.useState<string[]>([]);
   const [compareOpen, setCompareOpen] = React.useState(false);
   const [compareHint, setCompareHint] = React.useState(false);
+  const [staleFallback, setStaleFallback] = React.useState(false);
   const [flight, setFlight] = React.useState<{
     key: number;
     left: number;
@@ -488,12 +502,26 @@ export function ModelExplorer() {
   const load = React.useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/models.json", { headers: { Accept: "application/json" } });
+    const fetchMatrix = async (url: string) => {
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as ModelsMatrix;
-      setMatrix(json);
+      return (await res.json()) as ModelsMatrix;
+    };
+    try {
+      // Primary source: the generated matrix on the public S3/R2 bucket,
+      // refreshed daily without a rebuild. Falls back to the copy baked into
+      // this deploy when the bucket is unreachable.
+      setMatrix(await fetchMatrix(MATRIX_JSON_URL));
     } catch (err) {
+      if (MATRIX_JSON_URL !== "/api/models.json") {
+        try {
+          setMatrix(await fetchMatrix("/api/models.json"));
+          setStaleFallback(true);
+          return;
+        } catch {
+          /* fall through to the primary error */
+        }
+      }
       setError((err as Error).message);
     } finally {
       setLoading(false);
@@ -949,7 +977,7 @@ export function ModelExplorer() {
         <Button variant="outline" size="sm" onClick={exportJson}>
           <Download /> Export JSON
         </Button>
-        <a href="/api/models.csv" className="inline-flex">
+        <a href={MATRIX_CSV_URL} className="inline-flex" download>
           <Button variant="outline" size="sm"><Download /> CSV</Button>
         </a>
         <div className="ml-auto text-sm text-muted-foreground">
@@ -1425,6 +1453,8 @@ export function ModelExplorer() {
         </div>
         <div className="text-xs text-muted-foreground">
           Showing <span className="font-semibold text-foreground">{sorted.length}</span> ranked models
+          {matrix?.generatedAt ? ` · rankings updated ${ageLabel(matrix.generatedAt)}` : ""}
+          {staleFallback ? " · live data source unreachable, showing this deploy's snapshot" : ""}
           {channelFilter === "cursor" ? " with Cursor published plans" : ""}
           {channelFilter === "opencode" ? " with OpenCode Go published prices" : ""}
           {pinned.length > 0 ? ` · ${pinned.length} pinned (max 3)` : ""}

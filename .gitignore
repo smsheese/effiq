@@ -2,6 +2,12 @@
 dist/
 .astro/
 
+# generated data files (served from the R2/S3 bucket, not tracked in git;
+# regenerate locally with `npm run sync` or pull with `node scripts/fetch-data.mjs`)
+data/models-matrix.json
+data/models-matrix.csv
+data/sync-manifest.json
+
 # runtime OpenRouter cache + sync lock + snapshots (keep matrix + crosswalks)
 data/models-cache.json
 data/.sync.lock

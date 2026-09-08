@@ -43,6 +43,21 @@ Outputs of sync:
 - `data/sync-manifest.json`
 - `data/snapshots/` (gitignored)
 
+The three generated files are **not tracked in git**. They are distributed
+through a public S3-compatible bucket (Cloudflare R2):
+
+- Bucket layout: `<prefix>/latest/{models-matrix.json,models-matrix.csv,sync-manifest.json}`
+  plus `<prefix>/archive/<previous generatedAt>/…` where the daily workflow
+  renames the previous latest.
+- The daily sync workflow uploads fresh files (public reads, short
+  `max-age=300` cache) and commits nothing.
+- The explorer fetches `latest/models-matrix.json` live from
+  `PUBLIC_MATRIX_URL`, so data updates need no redeploy; the prerendered
+  `/api/models.json|csv` routes remain the baked fallback. Homepage top picks
+  and SEO markup are still baked at build time and refresh on code deploys.
+- Local dev: `npm run sync` regenerates everything offline, or set
+  `PUBLIC_MATRIX_URL` in `.env` and run `npm run data:pull`.
+
 Manual crosswalk seeds: `data/crosswalks.json`.
 
 Bundled input seeds: `data/aa-catalog.json`, `data/cursor-models.csv`, `data/cursorbench.json`, `data/opencode-go.json`, `data/subscription-plans.json`.
@@ -87,5 +102,5 @@ Rules:
 
 ## Public GitHub
 
-Safe to commit: matrix JSON/CSV, crosswalks, docs.  
-Never commit: `.env`, API keys, private dumps you do not want public.
+Safe to commit: seeds (aa-catalog, cursor-models, cursorbench, opencode-go, subscription-plans), crosswalks, docs.
+Never commit: `.env`, API keys, generated matrix/manifest (bucket only), private dumps you do not want public.

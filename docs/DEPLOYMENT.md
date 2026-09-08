@@ -4,8 +4,19 @@
 
 **effiq** is deployed as a **100% static site on Cloudflare Pages**. There is no backend process running at request time:
 - **Build time:** Astro compiles static HTML and exports `data/models-matrix.json` and `data/models-matrix.csv` into `dist/api/`. Discovery files (`robots.txt`, `sitemap.xml`, `llms.txt`), a branded `404.html`, and `public/_headers` ship with the build.
-- **Browser:** The React explorer hydrates on idle, fetches `/api/models.json` once, then runs filtering, weight sliders, Pareto charts, and ranking client-side. Chart and model-fact modules load as separate chunks.
-- **Data sync:** A scheduled GitHub Actions workflow (`.github/workflows/sync.yml`) runs daily (or on manual trigger), pulls updated model data, commits the fresh matrix to `main`, and automatically triggers Cloudflare Pages to rebuild.
+- **Browser:** The React explorer hydrates on idle, fetches the live matrix from the public S3/R2 bucket (`PUBLIC_MATRIX_URL`; `/api/models.json` is the baked fallback), then runs filtering, weight sliders, Pareto charts, and ranking client-side. Chart and model-fact modules load as separate chunks.
+- **Data sync:** A scheduled GitHub Actions workflow (`.github/workflows/sync.yml`) runs daily (or on manual trigger), pulls updated model data, and uploads the fresh matrix to the public S3-compatible bucket (Cloudflare R2), archiving the previous latest under its `generatedAt` timestamp. **Nothing is committed to git and no rebuild is triggered** — the explorer picks up new data on the next page load.
+
+### R2 / S3 bucket layout
+
+```
+<bucket>/<prefix>/latest/models-matrix.json     ← canonical (Cache-Control: public, max-age=300)
+<bucket>/<prefix>/latest/models-matrix.csv
+<bucket>/<prefix>/latest/sync-manifest.json
+<bucket>/<prefix>/archive/<generatedAt>/…       ← previous latest, renamed by the workflow
+```
+
+The bucket must allow **public GET** (e.g. an R2 custom domain or r2.dev public access) and CORS for `GET` from the site origin (needed for browser fetches).
 
 ---
 
@@ -52,16 +63,21 @@ Go to **Repo Settings** -> **Secrets and variables** -> **Actions**:
 | `OPENROUTER_API_KEY` | Secret | Optional / authenticated OpenRouter `models/find` fetch with higher rate limits; also powers the `sync:agent` docs-page refresh (skipped when unset) |
 | `CURSOR_API_KEY` | Secret | Optional / regenerate Cursor models |
 | `HF_TOKEN` | Secret | Optional Hugging Face token |
+| `R2_ACCESS_KEY_ID` | Secret | S3-compatible write key for the R2 bucket (sync upload) |
+| `R2_SECRET_ACCESS_KEY` | Secret | S3-compatible write secret for the R2 bucket (sync upload) |
+| `R2_ACCOUNT_ID` | Variable | Cloudflare account id; endpoint becomes `https://<id>.r2.cloudflarestorage.com` |
+| `R2_BUCKET` | Variable | R2 bucket name |
+| `R2_PREFIX` | Variable | Optional key prefix (default `effiq`) |
+| `PUBLIC_MATRIX_URL` | Variable (+ Pages env) | Public URL of `models-matrix.json` on the bucket; used by CI pulls, the explorer, and SEO dataset URLs |
 | `REFRESH_MODEL` | Variable | Optional OpenRouter model id for the agent seed refresh (default `openai/gpt-5.6-luna`) |
 | `REFRESH_REASONING_EFFORT` | Variable | Optional reasoning effort for the refresh model (default `high`; empty disables) |
 | `AA_CATALOG_PATH` | Variable | Override path to AA catalog JSON (defaults to `data/aa-catalog.json`) |
 | `CURSOR_MODELS_CSV` | Variable | Override path to Cursor CSV (defaults to `data/cursor-models.csv`) |
 | `SITE_URL` | Pages env (not Actions secret) | Public origin for Cloudflare Pages builds |
 
-### GitHub Workflow Permissions
+### Workflow permissions
 
-Ensure the sync workflow has write permissions to push matrix updates:
-- **Repo Settings** -> **Actions** -> **General** -> **Workflow permissions** -> Select **Read and write permissions**.
+The sync workflow no longer writes to the repository (`permissions: contents: read`); it only uploads to the bucket with the S3-compatible key pair. No special repo workflow permissions are needed.
 
 ---
 
@@ -70,8 +86,10 @@ Ensure the sync workflow has write permissions to push matrix updates:
 ```sh
 cp .env.example .env
 npm install
-npm run sync     # builds data/models-matrix.json + .csv
-npm run dev      # http://localhost:4321
+npm run sync       # builds data/models-matrix.json + .csv locally
+# or, to fetch the current matrix from the public bucket instead:
+# PUBLIC_MATRIX_URL=https://…/models-matrix.json npm run data:pull
+npm run dev        # http://localhost:4321
 npm test
 SITE_URL=https://effiq.pages.dev npm run build
 ```

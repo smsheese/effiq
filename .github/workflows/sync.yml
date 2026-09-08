@@ -7,18 +7,15 @@ on:
   workflow_dispatch: # Allows manual trigger from GitHub Actions UI
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   sync:
-    name: Sync Matrix & Deploy Trigger
+    name: Sync Matrix & Upload to R2
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -54,24 +51,41 @@ jobs:
       - name: Verify test suite against new matrix
         run: npm test
 
-      - name: Commit and push changes if updated
+      - name: Upload matrix to R2 (archives previous latest)
+        # Generated files live in the S3-compatible bucket, not git: the site
+        # reads them at runtime, so no commit and no rebuild is needed.
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_PREFIX: ${{ vars.R2_PREFIX }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          
-          # Stage updated matrix and manifest files
-          git add data/models-matrix.json data/models-matrix.csv data/sync-manifest.json
-          
-          # If seed inputs were refreshed (bundled or agent-updated), stage those too
-          if [ -f data/aa-catalog.json ]; then git add data/aa-catalog.json; fi
-          if [ -f data/cursor-models.csv ]; then git add data/cursor-models.csv; fi
-          if [ -f data/cursorbench.json ]; then git add data/cursorbench.json; fi
-          if [ -f data/opencode-go.json ]; then git add data/opencode-go.json; fi
+          set -euo pipefail
+          aws --version
+          S3_BASE="s3://${R2_BUCKET}/${R2_PREFIX:-effiq}"
 
-          if git diff --staged --quiet; then
-            echo "No changes in model matrix. Nothing to commit."
-          else
-            git commit -m "chore(data): automated models matrix sync [skip ci]"
-            git push origin main
-            echo "Changes pushed to main. Cloudflare Pages build triggered."
+          # Archive the previous latest under its own generatedAt timestamp.
+          PREV_TS=""
+          if aws s3 cp "${S3_BASE}/latest/sync-manifest.json" /tmp/prev-manifest.json --only-show-errors; then
+            PREV_TS=$(python3 -c "import json; print(json.load(open('/tmp/prev-manifest.json')).get('generatedAt',''))" 2>/dev/null || true)
           fi
+
+          if [ -n "$PREV_TS" ]; then
+            echo "Archiving previous latest under archive/${PREV_TS}"
+            for f in models-matrix.json models-matrix.csv sync-manifest.json; do
+              aws s3 cp "${S3_BASE}/latest/$f" "${S3_BASE}/archive/${PREV_TS}/$f" --only-show-errors
+            done
+          else
+            echo "No previous latest on the bucket; skipping archive (first run)"
+          fi
+
+          aws s3 cp data/models-matrix.json "${S3_BASE}/latest/models-matrix.json" \
+            --content-type "application/json" --cache-control "public, max-age=300"
+          aws s3 cp data/models-matrix.csv "${S3_BASE}/latest/models-matrix.csv" \
+            --content-type "text/csv" --cache-control "public, max-age=300"
+          aws s3 cp data/sync-manifest.json "${S3_BASE}/latest/sync-manifest.json" \
+            --content-type "application/json" --cache-control "public, max-age=300"
+
+          echo "Fresh matrix uploaded to ${S3_BASE}/latest/"
